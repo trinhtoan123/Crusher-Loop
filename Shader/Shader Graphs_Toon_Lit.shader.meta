@@ -1,0 +1,12 @@
+fileFormatVersion: 2
+guid: d2dac1870125c0348b9c95d3ac57b72d
+timeCreated: 1757375301
+licenseType: Free
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures:
+  - _ToonSubShader_0c1a82ee69d7128092ae22416791fc25_Texture2DCB2794E1_106110312_Texture2D: {fileID: 0}
+  userData:
+  assetBundleName:
+  assetBundleVariant:
