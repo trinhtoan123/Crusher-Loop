@@ -180,7 +180,7 @@ Material:
     - _EmissionColor: {r: 1, g: 0.5567105, b: 0.24056602, a: 1}
     - _HColor: {r: 1, g: 1, b: 1, a: 1}
     - _MatCapColor: {r: 1, g: 1, b: 1, a: 1}
-    - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
+    - _OutlineColor: {r: 1, g: 1, b: 1, a: 1}
     - _ReflectionColor: {r: 1, g: 1, b: 1, a: 1}
     - _RimColor: {r: 1, g: 0.7417172, b: 0.6179246, a: 1}
     - _SColor: {r: 0.24528301, g: 0.24528301, b: 0.24528301, a: 1}
