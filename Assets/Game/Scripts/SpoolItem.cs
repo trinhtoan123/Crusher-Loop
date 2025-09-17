@@ -15,7 +15,7 @@ public enum Direction
     Right
 }
 
-public class SpoolItem : MonoBehaviour,IPointerDownHandler,IPointerUpHandler
+public class SpoolItem : MonoBehaviour
 {
     [SerializeField] private Direction direction;
     [SerializeField] private float speed;
@@ -23,7 +23,6 @@ public class SpoolItem : MonoBehaviour,IPointerDownHandler,IPointerUpHandler
     [SerializeField] private LayerMask obstacleLayer = -1;
     [SerializeField] private SpoolController spoolController;
     [SerializeField] private float moveToConveyorSpeed = 2f;
-    private PathCreator pathCreation => spoolController.LevelManager.PathCreator;
     private bool isOnConveyor = false;
     private float distanceAlongPath = 0f;
     private Renderer itemRenderer;
@@ -41,15 +40,12 @@ public class SpoolItem : MonoBehaviour,IPointerDownHandler,IPointerUpHandler
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        if (!isOnConveyor && !CheckForObstacles())
-        {
-            ShowVisualFeedback();
+            // if (!isOnConveyor && !CheckForObstacles())
+            // {
+            //     ShowVisualFeedback();
+            // }
             MoveToConveyor();
-        }
-        else if (CheckForObstacles())
-        {
-            ShowErrorFeedback();
-        }
+
     }
 
     public void OnPointerUp(PointerEventData eventData)
@@ -83,24 +79,23 @@ public class SpoolItem : MonoBehaviour,IPointerDownHandler,IPointerUpHandler
         
         if (colliders.Length > 0)
         {
-            Debug.Log("Có vật cản, không thể di chuyển!");
             return true;
         }
         
         return false;
     }
 
-    private void MoveToConveyor()
+    public void MoveToConveyor()
     {
-        if (pathCreation == null)
+        if (spoolController.LevelManager.ConveyorController.PathCreation == null)
         {
             Debug.LogWarning("PathCreator chưa được gán!");
             return;
         }
 
         // Tìm điểm gần nhất trên path
-        Vector3 nearestPoint = pathCreation.path.GetClosestPointOnPath(transform.position);
-        distanceAlongPath = pathCreation.path.GetClosestDistanceAlongPath(transform.position);
+        Vector3 nearestPoint = spoolController.LevelManager.ConveyorController.PathCreation.path.GetClosestPointOnPath(transform.position);
+        distanceAlongPath = spoolController.LevelManager.ConveyorController.PathCreation.path.GetClosestDistanceAlongPath(transform.position);
         
         // Di chuyển đến điểm gần nhất trên băng chuyền
         transform.DOMove(nearestPoint, moveToConveyorSpeed).OnComplete(() =>
@@ -112,15 +107,15 @@ public class SpoolItem : MonoBehaviour,IPointerDownHandler,IPointerUpHandler
 
     void Update()
     {
-        if (isOnConveyor && spoolController.LevelManager.PathCreator != null)
+        if (isOnConveyor && spoolController.LevelManager.ConveyorController.PathCreation != null)
         {
             // Di chuyển theo path của băng chuyền
             distanceAlongPath += speed * Time.deltaTime;
-            Vector3 newPosition = spoolController.LevelManager.PathCreator.path.GetPointAtDistance(distanceAlongPath);
+            Vector3 newPosition = spoolController.LevelManager.ConveyorController.PathCreation.path.GetPointAtDistance(distanceAlongPath);
             transform.position = newPosition;
             
             // Kiểm tra nếu đã đến cuối path
-            if (distanceAlongPath >= pathCreation.path.length)
+            if (distanceAlongPath >= spoolController.LevelManager.ConveyorController.PathCreation.path.length)
             {
                 isOnConveyor = false;
                 distanceAlongPath = 0f;
@@ -136,17 +131,5 @@ public class SpoolItem : MonoBehaviour,IPointerDownHandler,IPointerUpHandler
         });
     }
 
-    private void ShowErrorFeedback()
-    {
-        if (itemRenderer != null)
-        {
-            // Hiệu ứng đỏ khi có lỗi
-            Color errorColor = Color.red;
-            itemRenderer.material.color = errorColor;
-            itemRenderer.material.DOColor(originalColor, 0.3f);
-        }
-        
-        // Hiệu ứng rung nhẹ
-        transform.DOShakePosition(0.3f, 0.1f, 10, 90, false, true);
-    }
+  
 }
