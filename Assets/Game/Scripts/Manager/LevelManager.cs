@@ -8,9 +8,10 @@ public class LevelManager : MonoBehaviour
 {
     [SerializeField] private SpoolController spoolController;
     [SerializeField] private ConveyorController conveyorController;
-
     public SpoolController SpoolController => spoolController;
     public ConveyorController ConveyorController => conveyorController;
+     public PathCreator PathCreation => conveyorController.PathCreation;
+    public RoadMeshCreator RoadMeshCreator => conveyorController.RoadMeshCreator;
 
     private void Start()
     {
