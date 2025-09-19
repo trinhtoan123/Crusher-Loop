@@ -14,6 +14,7 @@ public class SpoolColor
 {
     public Color color;
     public Material material;
+    public Material materialRoll;
   
 
 }

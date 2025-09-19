@@ -211,7 +211,6 @@ GameObject:
   - component: {fileID: 4527925088946058}
   - component: {fileID: 33048920099637793}
   - component: {fileID: 23682353112461662}
-  - component: {fileID: 114426433193499062}
   m_Layer: 0
   m_Name: Knit
   m_TagString: Untagged
@@ -287,18 +286,6 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &114426433193499062
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1532186013440405}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 08ed764d02fef4a2c05dfd1a47d033aa, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1555893895660157
 GameObject:
   m_ObjectHideFlags: 0

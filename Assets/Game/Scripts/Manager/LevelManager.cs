@@ -9,14 +9,14 @@ public class LevelManager : MonoBehaviour
 {
     [SerializeField] private SpoolController spoolController;
     [SerializeField] private ConveyorController conveyorController;
+    [SerializeField] private PillarController pillarController;
     private bool isGameOver = false;
     private Coroutine restartCoroutine;
     public SpoolController SpoolController => spoolController;
     public ConveyorController ConveyorController => conveyorController;
+    public PillarController PillarController => pillarController;
     public PathCreator PathCreation => conveyorController.PathCreation;
     public RoadMeshCreator RoadMeshCreator => conveyorController.RoadMeshCreator;
-   
-
 
     private void Start()
     {
@@ -27,6 +27,7 @@ public class LevelManager : MonoBehaviour
     {
         spoolController.Initialize(this);
         conveyorController.Initialize(this);
+        pillarController.Initialize(this);
         SubscribeToConveyorEvents();
         isGameOver = false;
     }
@@ -63,8 +64,6 @@ public class LevelManager : MonoBehaviour
         ConveyorController.OnConveyorMeltdown -= OnConveyorMeltdown;
         ConveyorController.OnConveyorJammed -= OnConveyorJammed;
     }
-    
-
     private void OnConveyorJammed()
     {
         Debug.LogWarning("🚫 BĂNG CHUYỀN BỊ TẮC! Giải quyết nhanh chóng để tránh meltdown!");

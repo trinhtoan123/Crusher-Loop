@@ -8,7 +8,6 @@ public class SpoolController : MonoBehaviour
 {
     [SerializeField] private SpoolData spoolData;
     [SerializeField] private List<SpoolItem> spoolItems;
-    [SerializeField] private Transform startPosition;
     private PathCreator pathCreation;
     private RoadMeshCreator roadMeshCreator;
     private LevelManager levelManager;
@@ -27,18 +26,5 @@ public class SpoolController : MonoBehaviour
             spoolItem.Initialize(this, spoolData);
         }
     }
-    
   
-    public void AddSpoolItem(SpoolItem spoolItem)
-    {
-        spoolItems.Add(spoolItem);
-    }
-    public void RemoveSpoolItem(SpoolItem spoolItem)
-    {
-        spoolItems.Remove(spoolItem);
-    }
-    public void StopSpool(SpoolItem spoolItem)
-    {
-       spoolItem.StateFollowPath(EndOfPathInstruction.Stop);
-    }
 }
