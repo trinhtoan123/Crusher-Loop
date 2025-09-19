@@ -25,8 +25,8 @@ namespace PathCreation.Examples
             {
                 distanceTravelled += speed * Time.deltaTime;
                 transform.position = pathCreator.path.GetPointAtDistance(distanceTravelled, endOfPathInstruction);
-                Quaternion quaternion = Quaternion.Euler(0, 0, 90);
-                transform.rotation = pathCreator.path.GetRotationAtDistance(distanceTravelled, endOfPathInstruction) * quaternion;
+                // Quaternion quaternion = Quaternion.Euler(0, 0, 90);
+                // transform.rotation = pathCreator.path.GetRotationAtDistance(distanceTravelled, endOfPathInstruction) * quaternion;
             }
         }
 
