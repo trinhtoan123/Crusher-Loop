@@ -241,9 +241,7 @@ public class SpoolItem : MonoBehaviour
         ActivateRoll(rollIndex);
     }
 
-    /// <summary>
-    /// Được gọi khi sợi len đã chạy hết tất cả knit items
-    /// </summary>
+    
     public void OnYarnCompletedAllKnits()
     {
         // Kích hoạt tất cả rolls còn lại (nếu có)

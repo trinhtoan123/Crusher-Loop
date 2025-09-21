@@ -2,22 +2,34 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using GogoGaga.OptimizedRopesAndCables;
+using DG.Tweening;
 
 public class Knit : MonoBehaviour
 {
     [Header("Knit Settings")]
     [SerializeField] private Transform[] knitItems;
     [SerializeField] private Material yarnMaterial;
+    [SerializeField] private Vector3[] anchorPositions = {
+        new Vector3(0.1f, 0.05f, 0),  
+        new Vector3(-0.1f, 0.05f, 0)   
+    };
     
     [Header("Rope Settings")]
     [SerializeField] private Rope ropePrefab;
     private Rope currentRope;
     private SpoolItem targetSpool;
     private int currentKnitIndex = -1;
-    private int currentChildIndex = 1;
+    private int currentChildIndex = 0;
     private bool isMovingToNextKnit = false;
     private bool isYarnActive = false;
-    [SerializeField] private float yarnMoveSpeed = 3f;  
+    [SerializeField] private float yarnMoveSpeed = 3f;
+    [SerializeField] private float moveDuration = 0.5f; // Thời gian di chuyển cho DOTween
+    [SerializeField] private Ease moveEase = Ease.OutQuad; // Loại easing cho animation
+    [SerializeField] private float ropeLengthDecreaseRate = 0.1f; // Tỷ lệ giảm độ dài rope mỗi lần di chuyển
+    [SerializeField] private float minRopeLength = 0.5f; // Độ dài tối thiểu của rope
+    
+    private Sequence movementSequence; // Sequence để quản lý các animation
+    private float initialRopeLength; // Độ dài ban đầu của rope
     
     public void CreateLine()
     {
@@ -26,7 +38,7 @@ public class Knit : MonoBehaviour
             return;
         }
         
-        targetSpool = FindAvailableSpoolItem();
+        targetSpool = FindSpoolItem();
         if (targetSpool == null)
         {
             return;
@@ -38,23 +50,24 @@ public class Knit : MonoBehaviour
             return;
         }
         
-        currentKnitIndex = knitItems.Length - 1;
-        currentChildIndex = 1;
+        // Bắt đầu từ Knit đầu tiên (index 0)
+        currentKnitIndex = 0;
+        currentChildIndex = 0; // Bắt đầu từ phần tử con đầu tiên
         
-        Transform endPosition = GetCurrentChildPosition();
+        // Lấy vị trí phần tử con đầu tiên của Knit đầu tiên
+        Transform endPosition = GetCurrentChildPosition(currentChildIndex);
    
         SetRopePoints(targetSpool.GetYarnConnectionPoint(), endPosition);
         targetSpool.StartWinding(currentRope);
         targetSpool.OnYarnReachKnit(currentKnitIndex, knitItems.Length);
 
         isYarnActive = true;
-        StartCoroutine(StartMovementAfterDelay());
+        StartMovementAfterDelay();
     }
 
 
-    private SpoolItem FindAvailableSpoolItem()
+    private SpoolItem FindSpoolItem()
     {
-        // Tìm SpoolItem có sẵn trong các PillarItem
         if (PillarController.instance == null || PillarController.instance.PillarItems == null)
         {
             return null;
@@ -77,138 +90,165 @@ public class Knit : MonoBehaviour
 
     void Update()
     {
-        if (isYarnActive && isMovingToNextKnit && currentRope != null)
-        {
-            MoveYarnHeadToTarget();
-        }
+        // Không cần Update nữa vì sử dụng DOTween
     }
 
     #region Yarn Movement Logic
-
-    private Transform GetCurrentChildPosition()
+    private Transform GetCurrentChildPosition(int index)
     {
         if (knitItems == null || currentKnitIndex < 0 || currentKnitIndex >= knitItems.Length)
         {
-            Debug.LogError($"currentKnitIndex không hợp lệ: {currentKnitIndex}");
             return null;
         }
-        
         Transform currentKnit = knitItems[currentKnitIndex];
-        if (currentKnit == null)
+        if (currentKnit == null || currentKnit.childCount == 0)
         {
-            Debug.LogError($"knitItems[{currentKnitIndex}] là null!");
             return null;
         }
         
-        if (currentChildIndex < 0 || currentChildIndex >= currentKnit.childCount)
+        // Lấy phần tử con theo index (từ 0 đến childCount-1)
+        if (index < 0 || index >= currentKnit.childCount)
         {
-            Debug.LogError($"currentChildIndex không hợp lệ: {currentChildIndex}, childCount: {currentKnit.childCount}");
             return null;
         }
         
-        Transform childTransform = currentKnit.GetChild(currentChildIndex);
-        return childTransform;
+        Transform childTransform = currentKnit.GetChild(index);
+        
+        // Tạo anchor point cho child này nếu chưa có
+        return CreateAnchorPointForChild(childTransform);
+    }
+    
+    /// <summary>
+    /// Tạo anchor point cho knit child với vị trí cụ thể
+    /// </summary>
+    private Transform CreateAnchorPointForChild(Transform childTransform)
+    {
+        if (childTransform == null) return null;
+        
+        Transform existingAnchor = childTransform.Find("KnitAnchor");
+        if (existingAnchor != null)
+        {
+            return existingAnchor;
+        }
+        
+        GameObject anchorPoint = new GameObject("KnitAnchor");
+        anchorPoint.transform.SetParent(childTransform);
+        
+        Vector3 anchorPosition = GetAnchorPositionForChildIndex(currentChildIndex);
+        anchorPoint.transform.localPosition = anchorPosition;
+        return anchorPoint.transform;
+    }
+    
+    /// <summary>
+    /// Lấy vị trí anchor cho child index cụ thể
+    /// </summary>
+    private Vector3 GetAnchorPositionForChildIndex(int childIndex)
+    {
+        if (anchorPositions == null || anchorPositions.Length == 0)
+        {
+            return Vector3.zero;
+        }
+        
+        int index = Mathf.Clamp(childIndex, 0, anchorPositions.Length - 1);
+        return anchorPositions[index];
     }
 
-    private IEnumerator StartMovementAfterDelay()
+    private void StartMovementAfterDelay()
     {
-        yield return new WaitForSeconds(0.3f);
-        MoveToNextTarget();
+        // Sử dụng DOTween thay vì coroutine
+        DOVirtual.DelayedCall(0.3f, MoveToNextTarget);
     }
 
     private void MoveToNextTarget()
     {
-        if (currentChildIndex > 0)
+        if (currentChildIndex < knitItems[currentKnitIndex].childCount - 1)
         {
-            currentChildIndex--;
-            isMovingToNextKnit = true;
-            Debug.LogError($"Di chuyển đến child {currentChildIndex} của knit {currentKnitIndex}");
+            currentChildIndex++;
+            SmoothMoveToTarget();
         }
-        else if (currentKnitIndex > 0)
+        else if (currentKnitIndex < knitItems.Length - 1)
         {
-            currentKnitIndex--;
-            currentChildIndex = 1;
-            isMovingToNextKnit = true;
-            Debug.Log($"Chuyển sang knit {currentKnitIndex}, child {currentChildIndex}");
+            currentKnitIndex++;
+            currentChildIndex = 0; 
+            SmoothMoveToTarget();
         }
         else
         {
-            // Hoàn thành tất cả
-            Debug.Log("Hoàn thành tất cả knit items");
             CompletedAllKnitItems();
         }
     }
 
 
-    private void MoveYarnHeadToTarget()
+    private void SmoothMoveToTarget()
     {
-        Transform targetTransform = GetCurrentChildPosition();
-        Debug.LogError(targetTransform.gameObject.name);
-        if (targetTransform == null || currentRope == null || currentRope.EndPoint == null)
+        Transform targetTransform = GetCurrentChildPosition(currentChildIndex);
+        if (targetTransform == null || currentRope == null)
         {
             return;
         }
         
-        Vector3 currentPos = currentRope.EndPoint.position;
-        Vector3 targetPos = targetTransform.position;
-        
-        // Kiểm tra nếu đã đến gần target
-        float distance = Vector3.Distance(currentPos, targetPos);
-        if (distance < 0.1f)
+        if (movementSequence != null && movementSequence.IsActive())
         {
-            // Đã đến target, chuyển sang vị trí tiếp theo
-            isMovingToNextKnit = false;
-            Debug.Log($"Đầu sợi len đã đến knit {currentKnitIndex}, child {currentChildIndex}");
-            
-            // Set endpoint thành target transform chính thức
-            currentRope.SetEndPoint(targetTransform, false);
-            
+            movementSequence.Kill();
+        }
+        
+        movementSequence = DOTween.Sequence();
+        
+        float newRopeLength = CalculateNewRopeLength();
+
+        currentRope.ropeLength = newRopeLength;
+        movementSequence.AppendCallback(() => {
+            currentRope.SetEndPoint(targetTransform, true);
             if (targetSpool != null)
             {
                 targetSpool.OnYarnReachKnit(currentKnitIndex, knitItems.Length);
             }
-            
-            StartCoroutine(DelayedMoveToNext());
-            return;
-        }
+        });
         
-        // Di chuyển đầu sợi len về phía target
-        Vector3 direction = (targetPos - currentPos).normalized;
-        Vector3 newPosition = currentPos + direction * yarnMoveSpeed * Time.deltaTime;
+        // Thêm delay trước khi di chuyển tiếp
+        movementSequence.AppendInterval(0.2f);
         
-        // Đảm bảo có temp endpoint để di chuyển
-        EnsureTempEndpoint(newPosition);
-        
-        // Cập nhật độ dài rope để tự nhiên
-        float ropeDistance = Vector3.Distance(currentRope.StartPoint.position, newPosition);
+        // Tiếp tục di chuyển đến target tiếp theo
+        movementSequence.AppendCallback(MoveToNextTarget);
     }
     
     /// <summary>
-    /// Đảm bảo có temp endpoint để di chuyển
+    /// Tính toán độ dài rope mới dựa trên số lần di chuyển
     /// </summary>
-    private void EnsureTempEndpoint(Vector3 position)
+    private float CalculateNewRopeLength()
     {
-        GameObject currentEndpoint = currentRope.EndPoint.gameObject;
+        int totalMoves = GetTotalMovesCount();
+        float decreaseAmount = ropeLengthDecreaseRate * totalMoves;
+        float newLength = initialRopeLength - decreaseAmount;
         
-        if (currentEndpoint.name == "TempYarnEndpoint")
-        {
-            // Đã có temp endpoint, chỉ cần update position
-            currentEndpoint.transform.position = position;
-        }
-        else
-        {
-            // Tạo temp endpoint mới
-            GameObject newTempEndpoint = new GameObject("TempYarnEndpoint");
-            newTempEndpoint.transform.position = position;
-            currentRope.SetEndPoint(newTempEndpoint.transform, false);
-        }
+        // Đảm bảo không nhỏ hơn độ dài tối thiểu
+        return Mathf.Max(newLength, minRopeLength);
     }
-
-    private IEnumerator DelayedMoveToNext()
+    
+    /// <summary>
+    /// Tính tổng số lần di chuyển đã thực hiện
+    /// </summary>
+    private int GetTotalMovesCount()
     {
-        yield return new WaitForSeconds(0.3f);
-        MoveToNextTarget();
+        int moves = 0;
+        
+        // Đếm số lần di chuyển trong các knit trước đó
+        for (int i = 0; i < currentKnitIndex; i++)
+        {
+            if (knitItems[i] != null)
+            {
+                moves += knitItems[i].childCount;
+            }
+        }
+        
+        // Cộng thêm số lần di chuyển trong knit hiện tại
+        moves += currentChildIndex;
+        
+        return moves;
     }
+    
+
+    // Không cần method này nữa vì đã tích hợp vào SmoothMoveToTarget()
 
     private void CompletedAllKnitItems()
     {
@@ -241,6 +281,9 @@ public class Knit : MonoBehaviour
             return;
         }
 
+        // Lưu độ dài ban đầu của rope
+        initialRopeLength = currentRope.ropeLength;
+
         LineRenderer lineRenderer = currentRope.GetComponent<LineRenderer>();
         if (lineRenderer != null && yarnMaterial != null)
         {
@@ -268,28 +311,18 @@ public class Knit : MonoBehaviour
     {
         isYarnActive = false;
         isMovingToNextKnit = false;
+        
+        // Hủy tất cả DOTween animations
+        if (movementSequence != null && movementSequence.IsActive())
+        {
+            movementSequence.Kill();
+        }
+        
         StopAllCoroutines();
         currentKnitIndex = -1;
-        currentChildIndex = 1;
+        currentChildIndex = 0; // Reset về 0 để phù hợp với logic mới
         targetSpool = null;
-        
-        CleanupTempEndpoints();
     }
-    
-
-    private void CleanupTempEndpoints()
-    {
-        GameObject[] tempEndpoints = GameObject.FindGameObjectsWithTag("Untagged");
-        foreach (GameObject obj in tempEndpoints)
-        {
-            if (obj != null && obj.name == "TempYarnEndpoint")
-            {
-                Destroy(obj);
-            }
-        }
-    }
-
-
     public void DestroyLine()
     {
         ClearLine();
