@@ -10,6 +10,7 @@ public class LevelManager : MonoBehaviour
     [SerializeField] private SpoolController spoolController;
     [SerializeField] private ConveyorController conveyorController;
     [SerializeField] private PillarController pillarController;
+    [SerializeField] private MapController mapController;
     private bool isGameOver = false;
     private Coroutine restartCoroutine;
     public SpoolController SpoolController => spoolController;
@@ -28,6 +29,7 @@ public class LevelManager : MonoBehaviour
         spoolController.Initialize(this);
         conveyorController.Initialize(this);
         pillarController.Initialize(this);
+        mapController.Initialize(this);
         SubscribeToConveyorEvents();
         isGameOver = false;
     }
