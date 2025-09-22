@@ -15,6 +15,8 @@ public class LevelManager : MonoBehaviour
 
     private bool isGameOver = false;
     private Coroutine restartCoroutine;
+    private int currentLevel = 0;
+    private int nextLevel = 1;
     public SpoolData SpoolData => spoolData;
     public SpoolController SpoolController => spoolController;
     public ConveyorController ConveyorController => conveyorController;
@@ -108,6 +110,32 @@ public class LevelManager : MonoBehaviour
         }
         
         RestartLevel();
+    }
+    
+    /// <summary>
+    /// Xử lý chuyển level - chuyển sang thùng tiếp theo
+    /// </summary>
+    public void ProcessLevel()
+    {
+        currentLevel = nextLevel;
+        nextLevel++;
+        Debug.Log($"Đã chuyển sang level {currentLevel}, thùng tiếp theo: {nextLevel}");
+    }
+    
+    /// <summary>
+    /// Lấy chỉ số thùng tiếp theo
+    /// </summary>
+    public int GetNextLevel()
+    {
+        return nextLevel;
+    }
+    
+    /// <summary>
+    /// Lấy chỉ số thùng hiện tại
+    /// </summary>
+    public int GetCurrentLevel()
+    {
+        return currentLevel;
     }
     
     #endregion

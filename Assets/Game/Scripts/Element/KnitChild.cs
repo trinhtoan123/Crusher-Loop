@@ -6,6 +6,7 @@ public class KnitChild : MonoBehaviour
 {
     [SerializeField] private ColorRope color;
     [SerializeField] private Material material;
+    public ColorRope Color => color;
     private LevelManager levelManager;
     public void Initialize(LevelManager levelManager)
     {
