@@ -12,7 +12,7 @@ public class SpoolData : ScriptableObject
 [System.Serializable]
 public class SpoolColor
 {
-    public Color color;
+    public ColorRope color;
     public Material material;
     public Material materialRoll;
   
@@ -25,7 +25,7 @@ public class SpoolDirection
     public Sprite sprite;
 }
 [System.Serializable]
-public enum Color
+public enum ColorRope
 {
     Red,
     Green,

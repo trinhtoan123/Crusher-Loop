@@ -11,8 +11,11 @@ public class LevelManager : MonoBehaviour
     [SerializeField] private ConveyorController conveyorController;
     [SerializeField] private PillarController pillarController;
     [SerializeField] private MapController mapController;
+    [SerializeField] private SpoolData spoolData;
+
     private bool isGameOver = false;
     private Coroutine restartCoroutine;
+    public SpoolData SpoolData => spoolData;
     public SpoolController SpoolController => spoolController;
     public ConveyorController ConveyorController => conveyorController;
     public PillarController PillarController => pillarController;

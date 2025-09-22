@@ -11,19 +11,16 @@ public class MapController : MonoBehaviour
     public void Initialize(LevelManager levelManager)
     {
         pillarController.Initialize(levelManager);
-        
+        foreach (var knit in knitItems)
+        {
+            knit.Initialize(levelManager);
+        }
         // Subscribe to event khi SpoolItem được đặt lên PillarItem
         PillarItem.OnSpoolItemPlaced += OnSpoolItemPlacedOnPillar;
     }
     void Update()
     {
-        if(Input.GetKeyDown(KeyCode.Space))
-        {
-            foreach (var knitItem in knitItems)
-            {
-                knitItem.CreateLine();
-            }
-        }
+    
     }
 
     /// <summary>

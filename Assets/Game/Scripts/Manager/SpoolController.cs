@@ -6,7 +6,6 @@ using UnityEngine;
 
 public class SpoolController : MonoBehaviour
 {
-    [SerializeField] private SpoolData spoolData;
     [SerializeField] private List<SpoolItem> spoolItems;
     private PathCreator pathCreation;
     private RoadMeshCreator roadMeshCreator;
@@ -23,7 +22,7 @@ public class SpoolController : MonoBehaviour
         roadMeshCreator = levelManager.RoadMeshCreator;
         foreach (var spoolItem in spoolItems)
         {
-            spoolItem.Initialize(this, spoolData);
+            spoolItem.Initialize(this, levelManager.SpoolData);
         }
     }
   

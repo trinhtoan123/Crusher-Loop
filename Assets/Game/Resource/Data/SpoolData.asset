@@ -15,18 +15,25 @@ MonoBehaviour:
   spoolColors:
   - color: 0
     material: {fileID: 2100000, guid: d71ac59db52e0b14d8b8f159acd6b473, type: 2}
+    materialRoll: {fileID: 2100000, guid: b778474537d0c9c4bba49e8972c4ddc4, type: 2}
   - color: 1
     material: {fileID: 2100000, guid: 07b72d0781aca894ab49e03b6599f07e, type: 2}
+    materialRoll: {fileID: 2100000, guid: e173b039664c0374287044430a9f56a9, type: 2}
   - color: 2
     material: {fileID: 2100000, guid: 7ced020f0e9595c4b8078ecccb90a152, type: 2}
+    materialRoll: {fileID: 2100000, guid: 097724aa70b65d64bb17f4dcd2c8b775, type: 2}
   - color: 3
     material: {fileID: 2100000, guid: f21156d3973ac594e833c93ed2fdde8c, type: 2}
+    materialRoll: {fileID: 2100000, guid: 84eba43a2c2cdb4489443ed4472bf4cc, type: 2}
   - color: 4
     material: {fileID: 2100000, guid: f7a57371ba67dd94d9d95638c5bf893a, type: 2}
+    materialRoll: {fileID: 0}
   - color: 5
     material: {fileID: 2100000, guid: 331fb6d274aa9b340a3075e3204e7206, type: 2}
+    materialRoll: {fileID: 0}
   - color: 6
     material: {fileID: 2100000, guid: fa73c7a3ad282e84998775820756017e, type: 2}
+    materialRoll: {fileID: 0}
   spoolDirections:
   - direction: 0
     sprite: {fileID: 21300000, guid: d397ac851c2be754b9783af823138528, type: 3}

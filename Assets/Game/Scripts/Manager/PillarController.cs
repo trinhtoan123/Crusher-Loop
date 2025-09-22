@@ -30,10 +30,13 @@ public class PillarController : MonoBehaviour
     {
         foreach (var pillar in pillarItems)
         {
-            // if (pillar.IsEmpty() && pillar.CanReceiveSpoolItem())
-            // {
-            //     return pillar;
-            // }
+            if (pillar.IsEmpty)
+            {
+                // Đánh dấu pillar này là đang được sử dụng ngay lập tức
+                // để tránh nhiều item cùng nhảy vào một pillar
+                pillar.SetEmpty(false, null);
+                return pillar;
+            }
         }
         
         return null; 

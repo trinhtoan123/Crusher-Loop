@@ -7,8 +7,7 @@ using DG.Tweening;
 public class Knit : MonoBehaviour
 {
     [Header("Knit Settings")]
-    [SerializeField] private Transform[] knitItems;
-    [SerializeField] private Material yarnMaterial;
+    [SerializeField] private KnitChild[] knitItems;
     [SerializeField] private Vector3[] anchorPositions = {
         new Vector3(0.1f, 0.05f, 0),  
         new Vector3(-0.1f, 0.05f, 0)   
@@ -16,12 +15,14 @@ public class Knit : MonoBehaviour
     
     [Header("Rope Settings")]
     [SerializeField] private Rope ropePrefab;
+    [SerializeField] private Material materialClear;
     private Rope currentRope;
     private SpoolItem targetSpool;
     private int currentKnitIndex = -1;
     private int currentChildIndex = 0;
     private bool isMovingToNextKnit = false;
     private bool isYarnActive = false;
+    private Transform previousPoint = null; // Lưu trữ điểm trước đó
     [SerializeField] private float yarnMoveSpeed = 3f;
     [SerializeField] private float moveDuration = 0.5f; // Thời gian di chuyển cho DOTween
     [SerializeField] private Ease moveEase = Ease.OutQuad; // Loại easing cho animation
@@ -30,7 +31,15 @@ public class Knit : MonoBehaviour
     
     private Sequence movementSequence; // Sequence để quản lý các animation
     private float initialRopeLength; // Độ dài ban đầu của rope
-    
+    private LevelManager levelManager;
+    public void Initialize(LevelManager levelManager)
+    {
+        this.levelManager = levelManager;
+        foreach (var knitItem in knitItems)
+        {
+            knitItem.Initialize(levelManager);
+        }
+    }
     public void CreateLine()
     {
         if (knitItems == null || knitItems.Length == 0)
@@ -53,6 +62,7 @@ public class Knit : MonoBehaviour
         // Bắt đầu từ Knit đầu tiên (index 0)
         currentKnitIndex = 0;
         currentChildIndex = 0; // Bắt đầu từ phần tử con đầu tiên
+        previousPoint = null; // Reset điểm trước đó khi bắt đầu
         
         // Lấy vị trí phần tử con đầu tiên của Knit đầu tiên
         Transform endPosition = GetCurrentChildPosition(currentChildIndex);
@@ -73,6 +83,9 @@ public class Knit : MonoBehaviour
             return null;
         }
 
+        // Lấy màu của knit đầu tiên
+        ColorRope targetColor = GetKnitColor(0);
+
         foreach (var pillar in PillarController.instance.PillarItems)
         {
             if (pillar.HasSpoolItem())
@@ -80,7 +93,11 @@ public class Knit : MonoBehaviour
                 SpoolItem spool = pillar.GetSpoolItem();
                 if (spool != null && !spool.IsWindingYarn())
                 {
-                    return spool;
+                    // Chỉ chọn ống chỉ có màu khớp với knit
+                    if (spool.color == targetColor)
+                    {
+                        return spool;
+                    }
                 }
             }
         }
@@ -88,9 +105,82 @@ public class Knit : MonoBehaviour
         return null;
     }
 
-    void Update()
+    // Lấy màu của knit theo index
+    private ColorRope GetKnitColor(int knitIndex)
     {
-        // Không cần Update nữa vì sử dụng DOTween
+        if (knitItems == null || knitIndex < 0 || knitIndex >= knitItems.Length)
+        {
+            return ColorRope.Red; // Màu mặc định
+        }
+
+        KnitChild knit = knitItems[knitIndex];
+        if (knit == null) return ColorRope.Red;
+
+        // Lấy màu từ field color của KnitChild
+        var colorField = typeof(KnitChild).GetField("color", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (colorField != null)
+        {
+            return (ColorRope)colorField.GetValue(knit);
+        }
+
+        return ColorRope.Red;
+    }
+
+    // Lấy material theo màu sắc
+    private Material GetMaterialByColor(ColorRope color)
+    {
+        if (levelManager == null || levelManager.SpoolData == null)
+        {
+            return null;
+        }
+
+        var spoolColor = levelManager.SpoolData.spoolColors.Find(x => x.color == color);
+        return spoolColor?.material;
+    }
+
+    // Cập nhật material của line theo màu sắc
+    private void UpdateLineMaterial(ColorRope color)
+    {
+        if (currentRope == null) return;
+
+        LineRenderer lineRenderer = currentRope.GetComponent<LineRenderer>();
+        if (lineRenderer != null)
+        {
+            Material newMaterial = GetMaterialByColor(color);
+            if (newMaterial != null)
+            {
+                lineRenderer.material = newMaterial;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Set material clear cho một điểm cụ thể
+    /// </summary>
+    private void SetPointMaterialClear(Transform point)
+    {
+        if (point == null || materialClear == null) return;
+
+        // Tìm KnitChild cha của điểm này
+        Transform knitChild = point.parent;
+        if (knitChild != null)
+        {
+            KnitChild knitChildComponent = knitChild.GetComponent<KnitChild>();
+            if (knitChildComponent != null)
+            {
+                // Sử dụng method SetMaterial của KnitChild để set material clear cho tất cả child
+                knitChildComponent.SetMaterial(materialClear);
+            }
+            else
+            {
+                // Nếu không có KnitChild component, set trực tiếp cho MeshRenderer
+                MeshRenderer meshRenderer = point.GetComponent<MeshRenderer>();
+                if (meshRenderer != null)
+                {
+                    meshRenderer.material = materialClear;
+                }
+            }
+        }
     }
 
     #region Yarn Movement Logic
@@ -100,7 +190,7 @@ public class Knit : MonoBehaviour
         {
             return null;
         }
-        Transform currentKnit = knitItems[currentKnitIndex];
+        Transform currentKnit = knitItems[currentKnitIndex].transform;
         if (currentKnit == null || currentKnit.childCount == 0)
         {
             return null;
@@ -161,7 +251,7 @@ public class Knit : MonoBehaviour
 
     private void MoveToNextTarget()
     {
-        if (currentChildIndex < knitItems[currentKnitIndex].childCount - 1)
+        if (currentChildIndex < knitItems[currentKnitIndex].transform.childCount - 1)
         {
             currentChildIndex++;
             SmoothMoveToTarget();
@@ -187,6 +277,24 @@ public class Knit : MonoBehaviour
             return;
         }
         
+        // Set material clear cho điểm trước đó (nếu có)
+        if (previousPoint != null)
+        {
+            SetPointMaterialClear(previousPoint);
+        }
+        
+        // Kiểm tra màu sắc - chỉ cuộn chỉ nếu màu khớp
+        ColorRope currentKnitColor = GetKnitColor(currentKnitIndex);
+        if (targetSpool != null && targetSpool.color != currentKnitColor)
+        {
+            // Màu không khớp, bỏ qua và chuyển sang knit tiếp theo
+            MoveToNextTarget();
+            return;
+        }
+
+        // Thay đổi material của line theo màu của knit hiện tại
+        UpdateLineMaterial(currentKnitColor);
+        
         if (movementSequence != null && movementSequence.IsActive())
         {
             movementSequence.Kill();
@@ -197,12 +305,16 @@ public class Knit : MonoBehaviour
         float newRopeLength = CalculateNewRopeLength();
 
         currentRope.ropeLength = newRopeLength;
-        movementSequence.AppendCallback(() => {
+        movementSequence.AppendCallback(() =>
+        {
             currentRope.SetEndPoint(targetTransform, true);
             if (targetSpool != null)
             {
                 targetSpool.OnYarnReachKnit(currentKnitIndex, knitItems.Length);
             }
+            
+            // Lưu điểm hiện tại làm điểm trước đó cho lần sau
+            previousPoint = targetTransform;
         });
         
         // Thêm delay trước khi di chuyển tiếp
@@ -237,7 +349,7 @@ public class Knit : MonoBehaviour
         {
             if (knitItems[i] != null)
             {
-                moves += knitItems[i].childCount;
+                moves += knitItems[i].transform.childCount;
             }
         }
         
@@ -255,10 +367,10 @@ public class Knit : MonoBehaviour
         isYarnActive = false;
         isMovingToNextKnit = false;
         
-        if (targetSpool != null)
-        {
-            targetSpool.OnYarnCompletedAllKnits();
-        }
+        // if (targetSpool != null)
+        // {
+        //     targetSpool.OnYarnCompletedAllKnits();
+        // }
     }
 
     #endregion
@@ -285,9 +397,15 @@ public class Knit : MonoBehaviour
         initialRopeLength = currentRope.ropeLength;
 
         LineRenderer lineRenderer = currentRope.GetComponent<LineRenderer>();
-        if (lineRenderer != null && yarnMaterial != null)
+        if (lineRenderer != null)
         {
-            lineRenderer.material = yarnMaterial;
+            // Lấy material theo màu của knit đầu tiên
+            ColorRope knitColor = GetKnitColor(0);
+            Material yarnMaterial = GetMaterialByColor(knitColor);
+            if (yarnMaterial != null)
+            {
+                lineRenderer.material = yarnMaterial;
+            }
         }
     }
     
@@ -321,6 +439,7 @@ public class Knit : MonoBehaviour
         StopAllCoroutines();
         currentKnitIndex = -1;
         currentChildIndex = 0; // Reset về 0 để phù hợp với logic mới
+        previousPoint = null; // Reset điểm trước đó
         targetSpool = null;
     }
     public void DestroyLine()
