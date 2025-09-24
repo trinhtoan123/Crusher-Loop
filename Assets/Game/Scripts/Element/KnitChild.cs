@@ -14,7 +14,7 @@ public class KnitChild : MonoBehaviour
     public void Initialize(LevelManager levelManager)
     {
         this.levelManager = levelManager;
-        Material material = levelManager.SpoolData.SpoolColors.Find(x => x.color == color).materialRoll;
+        Material material = GameManager.Instance.SpoolData.SpoolColors.Find(x => x.color == color).materialKnit;
         SetMaterial(material);
     }
 

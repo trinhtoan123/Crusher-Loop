@@ -11,19 +11,14 @@ public class Knit : MonoBehaviour
         new Vector3(0.1f, 0.05f, 0),  
         new Vector3(-0.1f, 0.05f, 0)   
     };
-    [SerializeField] private Rope ropePrefab;
-    [SerializeField] private Material materialClear;
-    [SerializeField] private float ropeLengthDecreaseRate = 0.1f; 
-    [SerializeField] private float minRopeLength = 0.5f; 
+    [SerializeField] private RopeSetting ropeSetting; 
     private LevelManager levelManager;
-    private Rope currentRope;
     private SpoolItem targetSpool;
     private int currentKnitIndex = -1;
     private int currentChildIndex = 0;
     private bool isYarnActive = false;
     private Transform previousPoint = null;
     private Sequence movementSequence; 
-    private float initialRopeLength; 
     public void Initialize(LevelManager levelManager)
     {
         this.levelManager = levelManager;
@@ -32,30 +27,42 @@ public class Knit : MonoBehaviour
             knitItem.Initialize(levelManager);
         }
     }
+    void Update()
+    {
+        if (Input.GetKey(KeyCode.Space))
+        {
+            CreateLine();
+        }
+    }
     public void CreateLine()
     {
         if (knitItems == null || knitItems.Length == 0)
         {
             return;
         }
-        
+
         targetSpool = FindSpoolItem();
         if (targetSpool == null)
         {
             return;
         }
-        CreateYarnRope();
-        if (currentRope == null)
+
+        if (ropeSetting != null)
         {
-            return;
+            RopeSetting rope = Instantiate(ropeSetting, ropeSetting.transform);
+
         }
+
         currentKnitIndex = 0;
         currentChildIndex = 0;
         previousPoint = null;
-        
-        Transform endPosition = GetCurrentChildPosition(currentChildIndex);
-        SetRopePoints(targetSpool.GetYarnConnectionPoint(), endPosition);
-        targetSpool.StartWinding(currentRope);
+
+        // Lấy Rope từ RopeSetting để truyền cho SpoolItem
+        Rope ropeForSpool = ropeSetting.GetComponent<RopeSetting>().currentRope;
+        if (ropeForSpool != null)
+        {
+            targetSpool.StartWinding(ropeForSpool);
+        }
         targetSpool.OnYarnReachKnit(currentKnitIndex, knitItems.Length);
         isYarnActive = true;
         StartMovementAfterDelay();
@@ -97,20 +104,20 @@ public class Knit : MonoBehaviour
 
     private Material GetColor(ColorRope color)
     {
-        if (levelManager == null || levelManager.SpoolData == null)
+        if (levelManager == null || GameManager.Instance.SpoolData == null)
         {
             return null;
         }
 
-        var spoolColor = levelManager.SpoolData.SpoolColors.Find(x => x.color == color);
+        var spoolColor = GameManager.Instance.SpoolData.SpoolColors.Find(x => x.color == color);
         return spoolColor?.materialSpool;
     }
 
     private void UpdateLineMaterial(ColorRope color)
     {
-        if (currentRope == null) return;
+        if (ropeSetting == null || ropeSetting.currentRope == null) return;
 
-        LineRenderer lineRenderer = currentRope.GetComponent<LineRenderer>();
+        LineRenderer lineRenderer = ropeSetting.currentRope.GetComponent<LineRenderer>();
         if (lineRenderer != null)
         {
             Material newMaterial = GetColor(color);
@@ -123,7 +130,7 @@ public class Knit : MonoBehaviour
 
     private void SetPointMaterialClear(Transform point)
     {
-        if (point == null || materialClear == null) return;
+        if (point == null || GameManager.Instance.SpoolData.MaterialKnitClear == null) return;
 
         Transform knitChild = point.parent;
         if (knitChild != null)
@@ -131,14 +138,14 @@ public class Knit : MonoBehaviour
             KnitChild knitChildComponent = knitChild.GetComponent<KnitChild>();
             if (knitChildComponent != null)
             {
-                knitChildComponent.SetMaterial(materialClear);
+                knitChildComponent.SetMaterial(GameManager.Instance.SpoolData.MaterialKnitClear);
             }
             else
             {
                 MeshRenderer meshRenderer = point.GetComponent<MeshRenderer>();
                 if (meshRenderer != null)
                 {
-                    meshRenderer.material = materialClear;
+                    meshRenderer.material = GameManager.Instance.SpoolData.MaterialKnitClear;
                 }
             }
         }
@@ -224,7 +231,7 @@ public class Knit : MonoBehaviour
     private void SmoothMoveToTarget()
     {
         Transform targetTransform = GetCurrentChildPosition(currentChildIndex);
-        if (targetTransform == null || currentRope == null)
+        if (targetTransform == null || ropeSetting == null)
         {
             return;
         }
@@ -256,10 +263,17 @@ public class Knit : MonoBehaviour
         
         float newRopeLength = CalculateNewRopeLength();
 
-        currentRope.ropeLength = newRopeLength;
+        // Sử dụng RopeSetting để di chuyển dây
+        if (ropeSetting.currentRope != null)
+        {
+            ropeSetting.currentRope.ropeLength = newRopeLength;
+        }
+        
         movementSequence.AppendCallback(() =>
         {
-            currentRope.SetEndPoint(targetTransform, true);
+            // Di chuyển đầu dây đến điểm mới
+            ropeSetting.MoveRopeToNextKnitPoint(targetTransform);
+            
             if (targetSpool != null)
             {
                 targetSpool.OnYarnReachKnit(currentKnitIndex, knitItems.Length);
@@ -310,50 +324,6 @@ public class Knit : MonoBehaviour
 
     #endregion
 
-    private void CreateYarnRope()
-    {
-        if (ropePrefab == null)
-        {
-            return;
-        }
-        
-        if (currentRope != null)
-        {
-            Destroy(currentRope.gameObject);
-            currentRope = null;
-        }
-        currentRope = Instantiate(ropePrefab);
-        if (currentRope == null)
-        {
-            return;
-        }
-
-
-        initialRopeLength = currentRope.ropeLength;
-
-        LineRenderer lineRenderer = currentRope.GetComponent<LineRenderer>();
-        if (lineRenderer != null)
-        {
-
-            ColorRope knitColor = GetKnitColor(0);
-            Material yarnMaterial = GetColor(knitColor);
-            if (yarnMaterial != null)
-            {
-                lineRenderer.material = yarnMaterial;
-            }
-        }
-    }
-    
-    private void SetRopePoints(Transform startPoint, Transform endPoint)
-    {
-        if (currentRope == null || startPoint == null || endPoint == null)
-        {
-            return;
-        }
-  
-        currentRope.SetStartPoint(startPoint, false);
-        currentRope.SetEndPoint(endPoint, false);
-    }
     public bool IsYarnActive()
     {
         return isYarnActive;
@@ -380,10 +350,9 @@ public class Knit : MonoBehaviour
     {
         ClearLine();
         
-        if (currentRope != null)
+        if (ropeSetting != null)
         {
-            Destroy(currentRope.gameObject);
-            currentRope = null;
+            ropeSetting.StopRopeMovement();
         }
     }
 }

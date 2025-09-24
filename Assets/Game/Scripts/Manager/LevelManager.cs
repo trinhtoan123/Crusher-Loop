@@ -16,17 +16,11 @@ public class LevelManager : MonoBehaviour
     private Coroutine restartCoroutine;
     private int currentLevel = 0;
     private int nextLevel = 1;
-    public SpoolData SpoolData => GameManager.Instance.SpoolData;
     public SpoolController SpoolController => spoolController;
     public ConveyorController ConveyorController => conveyorController;
     public PillarController PillarController => pillarController;
     public PathCreator PathCreation => conveyorController.PathCreation;
     public RoadMeshCreator RoadMeshCreator => conveyorController.RoadMeshCreator;
-
-    private void Start()
-    {
-        Initialize();
-    }
 
     public void Initialize()
     {

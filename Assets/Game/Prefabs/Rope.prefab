@@ -10,6 +10,8 @@ GameObject:
   m_Component:
   - component: {fileID: 29691021000780747}
   - component: {fileID: 7711759585538850956}
+  - component: {fileID: 138727159475271813}
+  - component: {fileID: 5057715960473490842}
   m_Layer: 0
   m_Name: Rope
   m_TagString: Untagged
@@ -143,3 +145,48 @@ LineRenderer:
   m_UseWorldSpace: 1
   m_Loop: 0
   m_ApplyActiveColorSpace: 1
+--- !u!114 &138727159475271813
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5798273969116456783}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 170bbd5988075104a9826a3ca2aaa30e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  swingFrequency: 2
+  swingAmplitude: 0.5
+  dampingFactor: 0.95
+  maxSwingAngle: 30
+  inertiaMultiplier: 1.2
+  ropeLength: 2
+  gravity: 9.81
+  enablePhysics: 1
+  ropeComponent: {fileID: 0}
+  ropeStartPoint: {fileID: 0}
+  ropeEndPoint: {fileID: 0}
+--- !u!114 &5057715960473490842
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5798273969116456783}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2fcc597881599646a35e7161a5504ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  startPoint: {fileID: 0}
+  midPoint: {fileID: 0}
+  endPoint: {fileID: 0}
+  linePoints: 10
+  stiffness: 350
+  damping: 15
+  ropeLength: 15
+  ropeWidth: 0.1
+  midPointWeight: 1
+  midPointPosition: 0.5

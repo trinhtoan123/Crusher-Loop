@@ -43,13 +43,46 @@ public class SpoolItem : MonoBehaviour
  
     public void Initialize(SpoolController spoolController, SpoolData spoolData)
     {
+        // Kiểm tra null parameters
+        if (spoolController == null)
+        {
+            Debug.LogError("SpoolController is null trong SpoolItem.Initialize!");
+            return;
+        }
+        
+        if (spoolData == null)
+        {
+            Debug.LogError("SpoolData is null trong SpoolItem.Initialize!");
+            return;
+        }
+        
         this.spoolController = spoolController;
         this.levelManager = spoolController.LevelManager;
         pathFollower = gameObject.AddComponent<PathFollower>();
         pathFollower.enabled = false;
         myCollider = GetComponent<BoxCollider>();
-        material.material = spoolData.SpoolColors.Find(x => x.color == color).materialSpool;
-        image.sprite = spoolData.SpoolDirections.Find(x => x.direction == direction).sprite;
+        
+        // Kiểm tra SpoolColors và tìm material
+        var spoolColorData = spoolData.SpoolColors?.Find(x => x.color == color);
+        if (spoolColorData != null && material != null)
+        {
+            material.material = spoolColorData.materialSpool;
+        }
+        else
+        {
+            Debug.LogWarning($"Không tìm thấy SpoolColor cho color: {color} hoặc material component null");
+        }
+        
+        // Kiểm tra SpoolDirections và tìm sprite
+        var spoolDirectionData = spoolData.SpoolDirections?.Find(x => x.direction == direction);
+        if (spoolDirectionData != null && image != null)
+        {
+            image.sprite = spoolDirectionData.sprite;
+        }
+        else
+        {
+            Debug.LogWarning($"Không tìm thấy SpoolDirection cho direction: {direction} hoặc image component null");
+        }
         
         // Lưu vị trí ban đầu
         initialPosition = transform.position;
@@ -68,10 +101,21 @@ public class SpoolItem : MonoBehaviour
             spoolTransform = transform.GetChild(0);
         }
         
-        foreach (var roll in rolls)
+        // Cập nhật material cho rolls
+        if (spoolColorData != null && rolls != null)
         {
-            roll.GetComponent<MeshRenderer>().material = spoolData.SpoolColors.Find(x => x.color == color).materialRoll;
-            roll.SetActive(false);
+            foreach (var roll in rolls)
+            {
+                if (roll != null)
+                {
+                    var rollRenderer = roll.GetComponent<MeshRenderer>();
+                    if (rollRenderer != null)
+                    {
+                        rollRenderer.material = spoolColorData.materialRoll;
+                    }
+                    roll.SetActive(false);
+                }
+            }
         }
     }
 

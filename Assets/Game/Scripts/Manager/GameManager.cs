@@ -8,6 +8,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private GameState currentGameState = GameState.Playing;
     [SerializeField] private DataLevel dataLevel;
     [SerializeField] private SpoolData spoolData;
+    [SerializeField] LevelManager levelManager;
     public SpoolData SpoolData => spoolData;
     public DataLevel DataLevel => dataLevel;
     public GameState CurrentGameState => currentGameState;
@@ -29,6 +30,7 @@ public class GameManager : MonoBehaviour
     }
     public void Initialize()
     {
+        levelManager.Initialize();
     }
     public void OnLoadLevel()
     {
