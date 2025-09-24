@@ -48,8 +48,8 @@ public class SpoolItem : MonoBehaviour
         pathFollower = gameObject.AddComponent<PathFollower>();
         pathFollower.enabled = false;
         myCollider = GetComponent<BoxCollider>();
-        material.material = spoolData.spoolColors.Find(x => x.color == color).material;
-        image.sprite = spoolData.spoolDirections.Find(x => x.direction == direction).sprite;
+        material.material = spoolData.SpoolColors.Find(x => x.color == color).materialSpool;
+        image.sprite = spoolData.SpoolDirections.Find(x => x.direction == direction).sprite;
         
         // Lưu vị trí ban đầu
         initialPosition = transform.position;
@@ -70,7 +70,7 @@ public class SpoolItem : MonoBehaviour
         
         foreach (var roll in rolls)
         {
-            roll.GetComponent<MeshRenderer>().material = spoolData.spoolColors.Find(x => x.color == color).materialRoll;
+            roll.GetComponent<MeshRenderer>().material = spoolData.SpoolColors.Find(x => x.color == color).materialRoll;
             roll.SetActive(false);
         }
     }

@@ -4,16 +4,18 @@ using UnityEngine;
 
 public class GameManager : MonoBehaviour
 {
-    public static GameManager instance;
+    public static GameManager Instance;
     [SerializeField] private GameState currentGameState = GameState.Playing;
     [SerializeField] private DataLevel dataLevel;
+    [SerializeField] private SpoolData spoolData;
+    public SpoolData SpoolData => spoolData;
     public DataLevel DataLevel => dataLevel;
     public GameState CurrentGameState => currentGameState;
     private void Awake()
     {
-        if(instance == null)
+        if(Instance == null)
         {
-            instance = this;
+            Instance = this;
         }
         else
         {

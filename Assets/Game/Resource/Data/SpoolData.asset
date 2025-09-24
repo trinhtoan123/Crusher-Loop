@@ -14,26 +14,41 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   spoolColors:
   - color: 0
-    material: {fileID: 2100000, guid: d71ac59db52e0b14d8b8f159acd6b473, type: 2}
-    materialRoll: {fileID: 2100000, guid: b778474537d0c9c4bba49e8972c4ddc4, type: 2}
+    materialSpool: {fileID: 2100000, guid: b09a320839466994fa8103c2d19dcb77, type: 2}
+    materialRoll: {fileID: 2100000, guid: ca958477d6695d546876fb9f67528d38, type: 2}
+    materialKnit: {fileID: 2100000, guid: ad18c3a5f383f2345be76813249ce824, type: 2}
   - color: 1
-    material: {fileID: 2100000, guid: 07b72d0781aca894ab49e03b6599f07e, type: 2}
-    materialRoll: {fileID: 2100000, guid: e173b039664c0374287044430a9f56a9, type: 2}
+    materialSpool: {fileID: 2100000, guid: 045a9e8e51c1e7a4f9cf9d038a634205, type: 2}
+    materialRoll: {fileID: 2100000, guid: b0affd9198d8c9642bb927ded6a7b45a, type: 2}
+    materialKnit: {fileID: 2100000, guid: b8909e4cb2a9f1144b6ead2af49db2a7, type: 2}
   - color: 2
-    material: {fileID: 2100000, guid: 7ced020f0e9595c4b8078ecccb90a152, type: 2}
-    materialRoll: {fileID: 2100000, guid: 097724aa70b65d64bb17f4dcd2c8b775, type: 2}
+    materialSpool: {fileID: 2100000, guid: 513ef0772df0a9a4196409969edb7d13, type: 2}
+    materialRoll: {fileID: 2100000, guid: f7bc0528af826f044acf0f023ba00f5a, type: 2}
+    materialKnit: {fileID: 2100000, guid: 1edfedb41706c8d4a93cc04fc16adadf, type: 2}
   - color: 3
-    material: {fileID: 2100000, guid: f21156d3973ac594e833c93ed2fdde8c, type: 2}
-    materialRoll: {fileID: 2100000, guid: 84eba43a2c2cdb4489443ed4472bf4cc, type: 2}
-  - color: 4
-    material: {fileID: 2100000, guid: f7a57371ba67dd94d9d95638c5bf893a, type: 2}
-    materialRoll: {fileID: 0}
-  - color: 5
-    material: {fileID: 2100000, guid: 331fb6d274aa9b340a3075e3204e7206, type: 2}
-    materialRoll: {fileID: 0}
-  - color: 6
-    material: {fileID: 2100000, guid: fa73c7a3ad282e84998775820756017e, type: 2}
-    materialRoll: {fileID: 0}
+    materialSpool: {fileID: 2100000, guid: b7e9f69f2457cfc4babdc86b1209e304, type: 2}
+    materialRoll: {fileID: 2100000, guid: 6e7190b77de3abe4bbec7b69fbb81869, type: 2}
+    materialKnit: {fileID: 2100000, guid: d48ee045a8a104b46b0b0dfe2e61d770, type: 2}
+  - color: 8
+    materialSpool: {fileID: 2100000, guid: 1eb94f76a084d28458c756dba1d101a0, type: 2}
+    materialRoll: {fileID: 2100000, guid: 49837d34ec165c44a92d64df0accf8f7, type: 2}
+    materialKnit: {fileID: 2100000, guid: 4316304d331577540bbc78a532b7b8f9, type: 2}
+  - color: 9
+    materialSpool: {fileID: 2100000, guid: 9b40c216f58851b4eacef43560ea7d91, type: 2}
+    materialRoll: {fileID: 2100000, guid: 73d7a799d7b076947a1bc41299549c60, type: 2}
+    materialKnit: {fileID: 2100000, guid: c98a29b1dc27c414dad77c3ffe123a81, type: 2}
+  - color: 10
+    materialSpool: {fileID: 2100000, guid: 90c69f5e690eafe4099e9cb8fc2c7190, type: 2}
+    materialRoll: {fileID: 2100000, guid: 0fb74f4e742dae34f8685b4f45583891, type: 2}
+    materialKnit: {fileID: 2100000, guid: 459513028157bd74593cf34914ccb11b, type: 2}
+  - color: 11
+    materialSpool: {fileID: 2100000, guid: 7578b78efdbc23043a3f5f7ccbffaa69, type: 2}
+    materialRoll: {fileID: 2100000, guid: bf9f2234b3d3d284f8f768a6fb423536, type: 2}
+    materialKnit: {fileID: 2100000, guid: 7a295a73118adfc4bbb69fdeae607171, type: 2}
+  - color: 12
+    materialSpool: {fileID: 2100000, guid: 1444eacad0c194147b199e647f769ce4, type: 2}
+    materialRoll: {fileID: 2100000, guid: 6dc6b7962deb13a41bf34f3f5926102e, type: 2}
+    materialKnit: {fileID: 2100000, guid: 970e602f6e09a2e4d80e8e2b4b641805, type: 2}
   spoolDirections:
   - direction: 0
     sprite: {fileID: 21300000, guid: d397ac851c2be754b9783af823138528, type: 3}

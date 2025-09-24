@@ -6,8 +6,6 @@ public class MapController : MonoBehaviour
 {
     [SerializeField] PillarController pillarController;
     [SerializeField] List<Knit> knitItems = new List<Knit>();
-
-
     public void Initialize(LevelManager levelManager)
     {
         pillarController.Initialize(levelManager);

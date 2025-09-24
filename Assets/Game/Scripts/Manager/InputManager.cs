@@ -10,7 +10,7 @@ public class InputManager : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))
         {
-            if (GameManager.instance.CurrentGameState != GameState.Playing)
+            if (GameManager.Instance.CurrentGameState != GameState.Playing)
                 return;
             PickSpool();
         }

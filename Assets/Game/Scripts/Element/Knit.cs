@@ -102,8 +102,8 @@ public class Knit : MonoBehaviour
             return null;
         }
 
-        var spoolColor = levelManager.SpoolData.spoolColors.Find(x => x.color == color);
-        return spoolColor?.material;
+        var spoolColor = levelManager.SpoolData.SpoolColors.Find(x => x.color == color);
+        return spoolColor?.materialSpool;
     }
 
     private void UpdateLineMaterial(ColorRope color)
@@ -151,18 +151,18 @@ public class Knit : MonoBehaviour
         {
             return null;
         }
-        Transform currentKnit = knitItems[currentKnitIndex].transform;
-        if (currentKnit == null || currentKnit.childCount == 0)
+        KnitChild currentKnitChild = knitItems[currentKnitIndex];
+        if (currentKnitChild == null || currentKnitChild.ChildItems == null || currentKnitChild.ChildItems.Length == 0)
         {
             return null;
         }
         
-        if (index < 0 || index >= currentKnit.childCount)
+        if (index < 0 || index >= currentKnitChild.ChildItems.Length)
         {
             return null;
         }
         
-        Transform childTransform = currentKnit.GetChild(index);
+        Transform childTransform = currentKnitChild.GetChildItem(index);
         
         return CreateAnchorPointForChild(childTransform);
     }
@@ -203,7 +203,7 @@ public class Knit : MonoBehaviour
 
     private void MoveToNextTarget()
     {
-        if (currentChildIndex < knitItems[currentKnitIndex].transform.childCount - 1)
+        if (currentChildIndex < knitItems[currentKnitIndex].ChildItems.Length - 1)
         {
             currentChildIndex++;
             SmoothMoveToTarget();
@@ -292,9 +292,9 @@ public class Knit : MonoBehaviour
         int moves = 0;
         for (int i = 0; i < currentKnitIndex; i++)
         {
-            if (knitItems[i] != null)
+            if (knitItems[i] != null && knitItems[i].ChildItems != null)
             {
-                moves += knitItems[i].transform.childCount;
+                moves += knitItems[i].ChildItems.Length;
             }
         }
         

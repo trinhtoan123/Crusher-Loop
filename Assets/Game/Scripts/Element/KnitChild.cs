@@ -4,25 +4,30 @@ using UnityEngine;
 
 public class KnitChild : MonoBehaviour
 {
-    [SerializeField] private ColorRope color;
-    [SerializeField] private Material material;
-    public ColorRope Color => color;
     private LevelManager levelManager;
+    [SerializeField] private ColorRope color;
+    [SerializeField] private Transform[] childItems;
+
+    public Transform[] ChildItems => childItems;
+    public ColorRope Color => color;
+    public LevelManager LevelManager => levelManager;
     public void Initialize(LevelManager levelManager)
     {
         this.levelManager = levelManager;
-        foreach (Transform child in transform)
-        {
-            child.GetComponent<MeshRenderer>().material = levelManager.SpoolData.spoolColors.Find(x => x.color == color).materialRoll;
-        }
+        Material material = levelManager.SpoolData.SpoolColors.Find(x => x.color == color).materialRoll;
+        SetMaterial(material);
     }
+
     public void SetMaterial(Material material)
     {
-        foreach (Transform child in transform)
+        foreach (Transform child in childItems)
         {
-            Debug.LogError(child.name);
             child.GetComponent<MeshRenderer>().material = material;
         }
+    }
+    public Transform GetChildItem(int index)
+    {
+        return childItems[index];
     }
     
 }
