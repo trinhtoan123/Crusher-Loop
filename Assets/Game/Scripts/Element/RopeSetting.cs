@@ -1,69 +1,44 @@
-using System.Collections;
+using System;
 using System.Collections.Generic;
-using UnityEngine;
+using DG.Tweening;
 using GogoGaga.OptimizedRopesAndCables;
-
+using UnityEngine;
 public class RopeSetting : MonoBehaviour
 {
-     public Transform StartTarget;
-    public Transform EndTarget;
+    private LineRenderer lineRenderer;
+    private Rope rope;
+    [SerializeField] private float moveDuration = 0.5f;
+    [SerializeField] private Transform startPoint;
+    [SerializeField] private Transform endPoint;
 
-    [Header("Tùy chọn")]
-    public Vector3 StartOffset;   // lệch nhẹ khỏi tâm
-    public Vector3 EndOffset;
-    public bool UseWorldSpace = true; // thường để true khi nối giữa 2 object khác nhau
-    public bool UpdateInLate = true;  // LateUpdate giảm jitter khi có Rigidbody
-
-    LineRenderer lr;
-
-    void Reset()
+    void Start()
     {
-        lr = GetComponent<LineRenderer>();
-        lr.positionCount = 2;
-        lr.useWorldSpace = true;
-        lr.widthMultiplier = 0.02f;
+        lineRenderer = GetComponent<LineRenderer>();
+        rope = GetComponent<Rope>();
+    }
+ 
+    public void SetMaterial(Material material)
+    {
+        lineRenderer.material = material;
     }
 
-    void Awake()
+    public void SetStartPoint(Transform startPointTarget)
     {
-        lr = GetComponent<LineRenderer>();
-        lr.positionCount = 2;
-        lr.useWorldSpace = UseWorldSpace;
+        this.startPoint = startPointTarget;
+    }
+    public void SetEndPoint(Transform endPointTarget)
+    {
+        this.endPoint.DOMove(endPointTarget.position, moveDuration);
     }
 
-    void Update()
+    public void MoveNextEndPoint(Transform nextEndPoint)
     {
-        if (!UpdateInLate) UpdateLine();
+        SetEndPoint(nextEndPoint);
     }
 
-    void LateUpdate()
+    public void ClearRope()
     {
-        if (UpdateInLate) UpdateLine();
-    }
-
-    void UpdateLine()
-    {
-        if (StartTarget == null || EndTarget == null) return;
-
-        if (lr.useWorldSpace)
-        {
-            lr.SetPosition(0, StartTarget.position + StartOffset);
-            lr.SetPosition(1, EndTarget.position + EndOffset);
-        }
-        else
-        {
-            // nếu muốn vẽ trong local-space của chính GameObject chứa LineRenderer
-            Vector3 p0 = transform.InverseTransformPoint(StartTarget.position + StartOffset);
-            Vector3 p1 = transform.InverseTransformPoint(EndTarget.position + EndOffset);
-            lr.SetPosition(0, p0);
-            lr.SetPosition(1, p1);
-        }
-    }
-
-    // Cho phép đổi option lúc đang chạy
-    void OnValidate()
-    {
-        if (!lr) lr = GetComponent<LineRenderer>();
-        if (lr) lr.useWorldSpace = UseWorldSpace;
+        lineRenderer.enabled = false;
     }
 }
+

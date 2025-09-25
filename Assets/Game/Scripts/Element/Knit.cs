@@ -11,29 +11,32 @@ public class Knit : MonoBehaviour
         new Vector3(0.1f, 0.05f, 0),  
         new Vector3(-0.1f, 0.05f, 0)   
     };
-    [SerializeField] private RopeSetting ropeSetting; 
     private LevelManager levelManager;
+    private MapController mapController;
     private SpoolItem targetSpool;
     private int currentKnitIndex = -1;
     private int currentChildIndex = 0;
-    private bool isYarnActive = false;
     private Transform previousPoint = null;
-    private Sequence movementSequence; 
-    public void Initialize(LevelManager levelManager)
+    private bool isClear;
+    
+    // Hệ thống cuộn len tự động
+
+    private Dictionary<ColorRope, SpoolItem> colorToSpoolMapping = new Dictionary<ColorRope, SpoolItem>();
+    private bool isAutoWinding = false;
+    public bool IsClear => isClear;
+    
+    public KnitChild[] KnitItems => knitItems;
+    public void Initialize(LevelManager levelManager, MapController mapController)
     {
         this.levelManager = levelManager;
+        this.mapController = mapController;
         foreach (var knitItem in knitItems)
         {
             knitItem.Initialize(levelManager);
         }
+        
     }
-    void Update()
-    {
-        if (Input.GetKey(KeyCode.Space))
-        {
-            CreateLine();
-        }
-    }
+ 
     public void CreateLine()
     {
         if (knitItems == null || knitItems.Length == 0)
@@ -41,91 +44,42 @@ public class Knit : MonoBehaviour
             return;
         }
 
-        targetSpool = FindSpoolItem();
         if (targetSpool == null)
         {
             return;
         }
 
-        if (ropeSetting != null)
-        {
-            RopeSetting rope = Instantiate(ropeSetting, ropeSetting.transform);
-
-        }
-
         currentKnitIndex = 0;
         currentChildIndex = 0;
         previousPoint = null;
-
-        // Lấy Rope từ RopeSetting để truyền cho SpoolItem
-        Rope ropeForSpool = ropeSetting.GetComponent<RopeSetting>().currentRope;
-        if (ropeForSpool != null)
-        {
-            targetSpool.StartWinding(ropeForSpool);
-        }
-        targetSpool.OnYarnReachKnit(currentKnitIndex, knitItems.Length);
-        isYarnActive = true;
-        StartMovementAfterDelay();
+      
     }
-
-
-    private SpoolItem FindSpoolItem()
+    public void ClearRow()
     {
-        if (PillarController.instance == null || PillarController.instance.PillarItems == null)
-        {
-            return null;
-        }
-
-        ColorRope targetColor = GetKnitColor(0);
-
-        foreach (var pillar in PillarController.instance.PillarItems)
-        {
-            if (pillar.HasSpoolItem())
-            {
-                SpoolItem spool = pillar.GetSpoolItem();
-                if (spool != null && !spool.IsWindingYarn())
-                {
-                    if (spool.color == targetColor)
-                    {
-                        return spool;
-                    }
-                }
-            }
-        }
-        
-        return null;
+        isClear = true;
     }
-
+  
+   
     private ColorRope GetKnitColor(int knitIndex)
     {
         KnitChild knit = knitItems[knitIndex];
         return knit.Color;
     }
 
-    private Material GetColor(ColorRope color)
-    {
-        if (levelManager == null || GameManager.Instance.SpoolData == null)
-        {
-            return null;
-        }
-
-        var spoolColor = GameManager.Instance.SpoolData.SpoolColors.Find(x => x.color == color);
-        return spoolColor?.materialSpool;
-    }
 
     private void UpdateLineMaterial(ColorRope color)
     {
-        if (ropeSetting == null || ropeSetting.currentRope == null) return;
+        // if (ropeSetting == null || ropeSetting.currentRope == null) return;
 
-        LineRenderer lineRenderer = ropeSetting.currentRope.GetComponent<LineRenderer>();
-        if (lineRenderer != null)
-        {
-            Material newMaterial = GetColor(color);
-            if (newMaterial != null)
-            {
-                lineRenderer.material = newMaterial;
-            }
-        }
+        // LineRenderer lineRenderer = ropeSetting.currentRope.GetComponent<LineRenderer>();
+        // if (lineRenderer != null)
+        // {
+        //     Material newMaterial = GetColor(color);
+        //     if (newMaterial != null)
+        //     {
+        //         lineRenderer.material = newMaterial;
+        //     }
+        // }
     }
 
     private void SetPointMaterialClear(Transform point)
@@ -151,7 +105,6 @@ public class Knit : MonoBehaviour
         }
     }
 
-    #region Yarn Movement Logic
     private Transform GetCurrentChildPosition(int index)
     {
         if (knitItems == null || currentKnitIndex < 0 || currentKnitIndex >= knitItems.Length)
@@ -203,156 +156,128 @@ public class Knit : MonoBehaviour
         return anchorPositions[index];
     }
 
-    private void StartMovementAfterDelay()
+    /// <summary>
+    /// Cuộn một sợi len đơn lẻ - chạy qua tất cả items cùng màu từ trái sang phải
+    /// </summary>
+    private IEnumerator WindSingleYarn(ColorRope color, SpoolItem targetSpool, int itemCount)
     {
-        DOVirtual.DelayedCall(0.3f, MoveToNextTarget);
-    }
-
-    private void MoveToNextTarget()
-    {
-        if (currentChildIndex < knitItems[currentKnitIndex].ChildItems.Length - 1)
+        // Tìm tất cả KnitChild có màu tương ứng
+        List<KnitChild> sourceKnits = new List<KnitChild>();
+        foreach (var knitItem in knitItems)
         {
-            currentChildIndex++;
-            SmoothMoveToTarget();
-        }
-        else if (currentKnitIndex < knitItems.Length - 1)
-        {
-            currentKnitIndex++;
-            currentChildIndex = 0; 
-            SmoothMoveToTarget();
-        }
-        else
-        {
-            CompletedAllKnitItems();
-        }
-    }
-
-
-    private void SmoothMoveToTarget()
-    {
-        Transform targetTransform = GetCurrentChildPosition(currentChildIndex);
-        if (targetTransform == null || ropeSetting == null)
-        {
-            return;
-        }
-        
-        
-        if (previousPoint != null)
-        {
-            SetPointMaterialClear(previousPoint);
-        }
-        
-        
-        ColorRope currentKnitColor = GetKnitColor(currentKnitIndex);
-        if (targetSpool != null && targetSpool.color != currentKnitColor)
-        {
-            
-            MoveToNextTarget();
-            return;
-        }
-
-        
-        UpdateLineMaterial(currentKnitColor);
-        
-        if (movementSequence != null && movementSequence.IsActive())
-        {
-            movementSequence.Kill();
-        }
-        
-        movementSequence = DOTween.Sequence();
-        
-        float newRopeLength = CalculateNewRopeLength();
-
-        // Sử dụng RopeSetting để di chuyển dây
-        if (ropeSetting.currentRope != null)
-        {
-            ropeSetting.currentRope.ropeLength = newRopeLength;
-        }
-        
-        movementSequence.AppendCallback(() =>
-        {
-            // Di chuyển đầu dây đến điểm mới
-            ropeSetting.MoveRopeToNextKnitPoint(targetTransform);
-            
-            if (targetSpool != null)
+            if (knitItem.Color == color)
             {
-                targetSpool.OnYarnReachKnit(currentKnitIndex, knitItems.Length);
-            }
-            
-            
-            previousPoint = targetTransform;
-        });
-        
-        
-        movementSequence.AppendInterval(0.2f);
-        
-        
-        movementSequence.AppendCallback(MoveToNextTarget);
-    }
-    
-    private float CalculateNewRopeLength()
-    {
-        int totalMoves = GetTotalMovesCount();
-        float decreaseAmount = ropeLengthDecreaseRate * totalMoves;
-        float newLength = initialRopeLength - decreaseAmount;
-        
-        
-        return Mathf.Max(newLength, minRopeLength);
-    }
-    
-
-    private int GetTotalMovesCount()
-    {
-        int moves = 0;
-        for (int i = 0; i < currentKnitIndex; i++)
-        {
-            if (knitItems[i] != null && knitItems[i].ChildItems != null)
-            {
-                moves += knitItems[i].ChildItems.Length;
+                sourceKnits.Add(knitItem);
             }
         }
         
-        moves += currentChildIndex;
+        if (sourceKnits.Count == 0)
+        {
+            Debug.LogError($"Không tìm thấy KnitChild nào có màu {color}");
+            yield break;
+        }
         
-        return moves;
+        // Sắp xếp từ trái sang phải (theo vị trí X)
+        sourceKnits.Sort((a, b) => a.transform.position.x.CompareTo(b.transform.position.x));
+        
+        Debug.Log($"Sợi len màu {color} sẽ chạy qua {sourceKnits.Count} items từ trái sang phải");
+        
+        // Tạo sợi len
+        GameObject yarnObject = new GameObject("Yarn_" + color);
+        LineRenderer yarnRenderer = yarnObject.AddComponent<LineRenderer>();
+        
+        // Cấu hình LineRenderer
+        yarnRenderer.material = GetYarnMaterial(color);
+        yarnRenderer.startWidth = 0.15f;
+        yarnRenderer.endWidth = 0.15f;
+        
+        // Tạo đường đi từ item đầu tiên đến item cuối cùng, rồi đến SpoolItem
+        List<Vector3> pathPoints = new List<Vector3>();
+        
+        // Thêm vị trí của tất cả items cùng màu (từ trái sang phải)
+        foreach (var knit in sourceKnits)
+        {
+            pathPoints.Add(knit.transform.position);
+        }
+        
+        // Thêm vị trí của SpoolItem
+        pathPoints.Add(targetSpool.transform.position);
+        
+        // Cấu hình LineRenderer với số điểm cần thiết
+        yarnRenderer.positionCount = pathPoints.Count;
+        for (int i = 0; i < pathPoints.Count; i++)
+        {
+            yarnRenderer.SetPosition(i, pathPoints[i]);
+        }
+        
+        // Animation len chạy từ trái sang phải
+        float duration = 2f; // Thời gian chạy qua tất cả items
+        float elapsedTime = 0f;
+        
+        while (elapsedTime < duration)
+        {
+            elapsedTime += Time.deltaTime;
+            float progress = elapsedTime / duration;
+            
+            // Tính toán vị trí hiện tại trên đường đi
+            int segmentIndex = Mathf.FloorToInt(progress * (pathPoints.Count - 1));
+            segmentIndex = Mathf.Clamp(segmentIndex, 0, pathPoints.Count - 2);
+            
+            float segmentProgress = (progress * (pathPoints.Count - 1)) - segmentIndex;
+            Vector3 currentPos = Vector3.Lerp(pathPoints[segmentIndex], pathPoints[segmentIndex + 1], segmentProgress);
+            
+            // Cập nhật vị trí cuối của sợi len
+            yarnRenderer.SetPosition(yarnRenderer.positionCount - 1, currentPos);
+            
+            yield return null;
+        }
+        
+        // Len đã đến đích, bắt đầu cuộn
+        targetSpool.StartWinding(null);
+        
+        // Hiệu ứng cuộn len
+        yield return new WaitForSeconds(0.5f);
+        
+        // Xóa sợi len sau khi cuộn xong
+        Destroy(yarnObject);
+        
+        Debug.Log($"Đã cuộn xong 1 sợi len màu {color} qua {itemCount} items");
     }
-
-    private void CompletedAllKnitItems()
+    private Material GetYarnMaterial(ColorRope color)
     {
-        isYarnActive = false;
-    }
-
-    #endregion
-
-    public bool IsYarnActive()
-    {
-        return isYarnActive;
+        // Tìm material từ SpoolData
+        if (GameManager.Instance?.SpoolData?.SpoolColors != null)
+        {
+            var colorData = GameManager.Instance.SpoolData.SpoolColors.Find(x => x.color == color);
+            if (colorData != null)
+            {
+                return colorData.materialKnit; // Hoặc materialYarn nếu có
+            }
+        }
+        
+        // Material mặc định
+        return new Material(Shader.Find("Sprites/Default"));
     }
     
-   
-    public void ClearLine()
+    /// <summary>
+    /// Dừng cuộn len tự động
+    /// </summary>
+    public void StopAutoWinding()
     {
-        isYarnActive = false;
-        
+        if (isAutoWinding)
+        {
+            StopAllCoroutines();
+            isAutoWinding = false;
+            Debug.Log("Đã dừng cuộn len tự động");
+        }
+    }
+    
+    /// <summary>
+    /// Kiểm tra xem có đang cuộn len không
+    /// </summary>
+    public bool IsAutoWinding()
+    {
+        return isAutoWinding;
+    }
 
-        if (movementSequence != null && movementSequence.IsActive())
-        {
-            movementSequence.Kill();
-        }
-        
-        StopAllCoroutines();
-        currentKnitIndex = -1;
-        currentChildIndex = 0;
-        previousPoint = null;
-        targetSpool = null;
-    }
-    public void DestroyLine()
-    {
-        ClearLine();
-        
-        if (ropeSetting != null)
-        {
-            ropeSetting.StopRopeMovement();
-        }
-    }
 }

@@ -9,6 +9,7 @@ using GogoGaga.OptimizedRopesAndCables;
 
 public class SpoolItem : MonoBehaviour
 {
+    #region Fields & Properties
     [SerializeField]  public ColorRope color;
     [SerializeField] private Direction direction;
     [SerializeField] private MeshRenderer material;
@@ -25,82 +26,55 @@ public class SpoolItem : MonoBehaviour
     private Transform spoolTransform; 
     private float conveyorDistance;
     private SpoolController spoolController;
+    private MapController mapController;
     private LevelManager levelManager;
     private BoxCollider myCollider;
     private Vector3 posConveyor = new Vector3(0, 0.5f, 0);
     private bool isOnConveyor = false;
-    private bool isMovingToConveyor = false;
-    private bool isMoving = false;
-    private bool isMovingToPillar = false;
-    private bool hasJumpedToPillar = false;
+    private bool isOnPillar = false;
     private PathFollower pathFollower;
     private Rope attachedRope;
     private bool isWindingYarn = false;
     private int activeRolls = 0;
     private bool isBlocked = false;
-    private float blockedTime = 0f;
     private Vector3 initialPosition;
- 
+    public bool IsOnPillar => isOnPillar;
+    #endregion
+
+    #region Initialization
     public void Initialize(SpoolController spoolController, SpoolData spoolData)
     {
-        // Kiểm tra null parameters
-        if (spoolController == null)
-        {
-            Debug.LogError("SpoolController is null trong SpoolItem.Initialize!");
-            return;
-        }
-        
-        if (spoolData == null)
-        {
-            Debug.LogError("SpoolData is null trong SpoolItem.Initialize!");
-            return;
-        }
-        
         this.spoolController = spoolController;
         this.levelManager = spoolController.LevelManager;
+        this.mapController = levelManager.MapController;
         pathFollower = gameObject.AddComponent<PathFollower>();
         pathFollower.enabled = false;
         myCollider = GetComponent<BoxCollider>();
-        
-        // Kiểm tra SpoolColors và tìm material
+
         var spoolColorData = spoolData.SpoolColors?.Find(x => x.color == color);
         if (spoolColorData != null && material != null)
         {
             material.material = spoolColorData.materialSpool;
         }
-        else
-        {
-            Debug.LogWarning($"Không tìm thấy SpoolColor cho color: {color} hoặc material component null");
-        }
-        
-        // Kiểm tra SpoolDirections và tìm sprite
+
         var spoolDirectionData = spoolData.SpoolDirections?.Find(x => x.direction == direction);
         if (spoolDirectionData != null && image != null)
         {
             image.sprite = spoolDirectionData.sprite;
         }
-        else
-        {
-            Debug.LogWarning($"Không tìm thấy SpoolDirection cho direction: {direction} hoặc image component null");
-        }
-        
-        // Lưu vị trí ban đầu
+
         initialPosition = transform.position;
-        
+
         // Reset trạng thái
         isOnConveyor = false;
-        isMovingToConveyor = false;
-        isMoving = false;
-        isMovingToPillar = false;
-        hasJumpedToPillar = false;
+        isOnPillar = false;
         isBlocked = false;
-        blockedTime = 0f;
-        
+
         if (spoolTransform == null)
         {
             spoolTransform = transform.GetChild(0);
         }
-        
+
         // Cập nhật material cho rolls
         if (spoolColorData != null && rolls != null)
         {
@@ -117,35 +91,46 @@ public class SpoolItem : MonoBehaviour
                 }
             }
         }
+        CreateAnchorPoint();
     }
+    
+    private Transform CreateAnchorPoint()
+    {
+        GameObject anchorPoint = new GameObject("Anchor");
+        Transform targetTransform = spoolTransform != null ? spoolTransform : transform;
+        anchorPoint.transform.SetParent(targetTransform);
+        anchorPoint.transform.localPosition = new Vector3(0, yarnConnectionHeightOffset, 0);
+        anchorPoint.transform.position = targetTransform.position + Vector3.up * yarnConnectionHeightOffset;
+        return anchorPoint.transform;
+    }
+    #endregion
 
+    #region Idle State - Đứng im
     public void StartMoving()
     {
-        if (!isOnConveyor && !isMovingToConveyor && !isMoving)
+        if (!isOnConveyor && !isOnPillar)
         {
-            StartCoroutine(MoveInDirectionCoroutine());
+            StartCoroutine(IEMoveInDirection());
         }
     }
-    private IEnumerator MoveInDirectionCoroutine()
+    
+    private IEnumerator IEMoveInDirection()
     {
-        isMoving = true;
         Vector3 moveDirection = GetDirection();
-        while (isMoving && !isOnConveyor && !isMovingToConveyor)
+        while (!isOnConveyor && !isOnPillar)
         {
-            if (IsPathBlocked())
+            if (TriggerSpoolOther())
             {
                 if (!isBlocked)
                 {
-                    StartCoroutine(ReturnToInitialPosition());
+                    StartCoroutine(MoveToPath());
                 }
                 isBlocked = true;
-                blockedTime += Time.deltaTime;
             }
             else
             {
              
                 isBlocked = false;
-                blockedTime = 0f;
                 transform.position += moveDirection * moveSpeed * Time.deltaTime;
             }
             
@@ -153,6 +138,60 @@ public class SpoolItem : MonoBehaviour
             yield return null;
         }
     }
+
+    private bool TriggerSpoolOther()
+    {
+        Vector3 moveDirection = GetDirection();
+        Vector3 checkPosition = transform.position + moveDirection * 1f; 
+        
+        Collider[] colliders = Physics.OverlapSphere(checkPosition, 0.5f);
+        
+        foreach (Collider col in colliders)
+        {
+            if (col == myCollider) continue;
+            
+            SpoolItem otherSpool = col.GetComponent<SpoolItem>();
+            if (otherSpool != null)
+            {
+                return true; 
+            }
+        }
+        
+        return false; 
+    }
+
+    private IEnumerator MoveToPath()
+    {
+        float returnDuration = Vector3.Distance(transform.position, initialPosition) / moveSpeed;
+        
+        transform.DOMove(initialPosition, returnDuration)
+            .SetEase(Ease.OutQuad)
+            .OnComplete(() =>
+            {
+                isBlocked = false;
+            });
+            
+        yield return new WaitForSeconds(returnDuration);
+    }
+
+    private Vector3 GetDirection()
+    {
+        switch (direction)
+        {
+            case Direction.Up:
+                return Vector3.forward;
+            case Direction.Down:
+                return Vector3.back;
+            case Direction.Left:
+                return Vector3.left;
+            case Direction.Right:
+                return Vector3.right;
+        }
+        return Vector3.zero;
+    }
+    #endregion
+
+    #region Conveyor State - Trên băng chuyền
     private void CheckConveyorDistance()
     {
         if (levelManager.PathCreation != null)
@@ -163,36 +202,39 @@ public class SpoolItem : MonoBehaviour
             
             if (distanceToConveyor <= conveyorDetectionDistance)
             {
-                // Kiểm tra xem có item nào đang chặn đường không
-                if (!IsPathBlocked())
+                if (!TriggerSpoolOther())
                 {
                     JumpToConveyor(closestPoint);
                 }
             }
         }
     }
+    
     private void JumpToConveyor(Vector3 conveyorPoint)
     {
-        if (isMovingToConveyor) return;
-
-        isMovingToConveyor = true;
-        isMoving = false;
+        if (isOnConveyor) return;
 
         Vector3 availablePosition = levelManager.ConveyorController.GetAvailablePositionOnConveyor(conveyorPoint);
         conveyorDistance = levelManager.PathCreation.path.GetClosestDistanceAlongPath(availablePosition);
         availablePosition = new Vector3(availablePosition.x, availablePosition.y + 0.7f, availablePosition.z);
+        
         transform.DOJump(availablePosition, jumpHeight, 1, jumpDuration)
             .SetEase(Ease.OutQuad)
             .OnComplete(() =>
             {
-                StartFollowingPath();
+                StartCoroutine(DelayedStartFollowingPath());
             });
+    }
+
+    private IEnumerator DelayedStartFollowingPath()
+    {
+        yield return new WaitForEndOfFrame();
+        StartFollowingPath();
     }
 
     private void StartFollowingPath()
     {
         isOnConveyor = true;
-        isMovingToConveyor = false;
 
         PathCreator pathCreator = levelManager.PathCreation;
         pathFollower.pathCreator = pathCreator;
@@ -207,25 +249,26 @@ public class SpoolItem : MonoBehaviour
                 field.SetValue(pathFollower, conveyorDistance);
             }
         }
+
         transform.GetChild(0).localPosition = posConveyor;
         myCollider.center = posConveyor;
         pathFollower.enabled = true;
+        transform.DOKill();
         StartCoroutine(CheckPillarDistanceCoroutine());
     }
 
-
     private IEnumerator CheckPillarDistanceCoroutine()
     {
-        while (isOnConveyor && !isMovingToPillar && pathFollower != null && pathFollower.enabled)
+        while (isOnConveyor && !isOnPillar && pathFollower != null && pathFollower.enabled)
         {
             CheckPillarDistance();
-            yield return new WaitForSeconds(0.1f); // Kiểm tra mỗi 0.1 giây thay vì mỗi frame
+            yield return new WaitForSeconds(0.2f); // Kiểm tra mỗi 0.1 giây thay vì mỗi frame
         }
     }
 
     private void CheckPillarDistance()
     {
-        if (levelManager?.ConveyorController?.PositionStart == null || hasJumpedToPillar) return;
+        if (levelManager?.ConveyorController?.PositionStart == null || isOnPillar) return;
         
         Transform positionStart = levelManager.ConveyorController.PositionStart;
         float distanceToPillar = Vector3.Distance(transform.position, positionStart.position);
@@ -233,17 +276,18 @@ public class SpoolItem : MonoBehaviour
         if (distanceToPillar <= pillarDetectionDistance)
         {
             PillarItem availablePillar = PillarController.instance.GetAvailablePillar();
-            if (availablePillar != null && !isMovingToPillar)
+            if (availablePillar != null && !isOnPillar)
             {
                 JumpToPillar(availablePillar);
             }
         }
     }
-  
+    #endregion
+
+    #region Pillar State - Trên pillar
     private void JumpToPillar(PillarItem targetPillar)
     {
-        isMovingToPillar = true;
-        hasJumpedToPillar = true;
+        isOnPillar = true;
         if (pathFollower != null)
         {
             pathFollower.enabled = false;
@@ -253,53 +297,37 @@ public class SpoolItem : MonoBehaviour
             .OnComplete(() =>
             {
                 targetPillar.SetEmpty(false, this);
-                // Dừng coroutine kiểm tra pillar sau khi đã nhảy vào
                 StopAllCoroutines();
+                mapController.OnSpoolWinding?.Invoke(this);
             });
         isOnConveyor = false;
+
     }
+    #endregion
 
-
+    #region Winding State - Cuốn sợi len
     public void StartWinding(Rope rope)
     {
         if (attachedRope != null)
         {
             StopWindingYarn();
         }
-        
         attachedRope = rope;
         isWindingYarn = true;
         activeRolls = 0;
         
         ResetAllRolls();
         StartSpoolRotation();
-        
-     
-    }
-    public void OnYarnReachKnit(int knitIndex, int totalKnits)
-    {
-        if (!isWindingYarn) return;
-        
-        int rollIndex = totalKnits - 1 - knitIndex; 
-        
-        ActivateRoll(rollIndex);
+        StartCoroutine(WindingYarnCoroutine());
     }
 
-    
     public void OnYarnCompletedAllKnits()
     {
-        // Kích hoạt tất cả rolls còn lại (nếu có)
-        // ActivateAllRemainingRolls();
-        
         // Hiệu ứng hoàn thành
-        transform.DOPunchScale(Vector3.one * 0.15f, 0.8f, 8, 0.4f);
-        
-        // Có thể thêm hiệu ứng particle hoặc sound effect ở đây
+        Debug.LogError("Done");
+        StopSpoolRotation();
     }
 
-    /// <summary>
-    /// Dừng thu sợi len
-    /// </summary>
     public void StopWindingYarn()
     {
         isWindingYarn = false;
@@ -326,68 +354,22 @@ public class SpoolItem : MonoBehaviour
 
     private void ActivateRoll(int rollIndex)
     {
-        if (rolls == null || rolls.Length == 0 || rollIndex < 0 || rollIndex >= rolls.Length || rolls[rollIndex] == null) 
+        if (rollIndex >= rolls.Length) 
         {
             return;
         }
-
         if (!rolls[rollIndex].activeInHierarchy)
         {
             rolls[rollIndex].SetActive(true);
             activeRolls++;
-            Vector3 scale = rolls[rollIndex].transform.localScale;
-            rolls[rollIndex].transform.localScale = Vector3.zero;
-            rolls[rollIndex].transform.DOScale(scale, 0.4f)
-                .SetEase(Ease.OutBack)
-                .OnComplete(() =>
-                {
-                    // Hiệu ứng bounce nhẹ
-                    if (rolls[rollIndex] != null)
-                    {
-                        rolls[rollIndex].transform.DOPunchScale(Vector3.one * 0.1f, 0.3f, 3, 0.2f);
-                    }
-                });
         }
     }
 
-    private void ActivateAllRemainingRolls()
-    {
-        if (rolls == null) return;
-        
-        for (int i = 0; i < rolls.Length; i++)
-        {
-            if (!rolls[i].activeInHierarchy)
-            {
-                // Delay nhỏ giữa các roll để tạo hiệu ứng cascade
-                StartCoroutine(ActivateRollWithDelay(i, i * 0.1f));
-            }
-        }
-    }
-
-    private IEnumerator ActivateRollWithDelay(int rollIndex, float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        ActivateRoll(rollIndex);
-    }
-
-  
     public bool IsWindingYarn()
     {
         return isWindingYarn;
     }
     
-    public Transform GetYarnConnectionPoint()
-    {
-        // Tạo empty GameObject làm điểm anchor với offset chính xác
-        GameObject anchorPoint = new GameObject("YarnAnchor");
-        Transform targetTransform = spoolTransform != null ? spoolTransform : transform;
-        
-        anchorPoint.transform.SetParent(targetTransform);
-        anchorPoint.transform.localPosition = new Vector3(0, yarnConnectionHeightOffset, 0);
-        anchorPoint.transform.position = targetTransform.position + Vector3.up * yarnConnectionHeightOffset;
-        
-        return anchorPoint.transform;
-    }
     private void StartSpoolRotation()
     {
         if (isRotating) return;
@@ -405,62 +387,30 @@ public class SpoolItem : MonoBehaviour
         if (spoolTransform != null) spoolTransform.DOKill();
         transform.DOKill();
     }
-  
-    private bool IsPathBlocked()
+
+    /// <summary>
+    /// Coroutine mô phỏng việc thu sợi len
+    /// </summary>
+    private IEnumerator WindingYarnCoroutine()
     {
-        Vector3 moveDirection = GetDirection();
-        Vector3 checkPosition = transform.position + moveDirection * 1f; 
+        float windingDuration = 2f; // Thời gian thu sợi len
+        float elapsedTime = 0f;
         
-        // Sử dụng Physics.OverlapSphere để kiểm tra va chạm
-        Collider[] colliders = Physics.OverlapSphere(checkPosition, 0.5f);
-        
-        foreach (Collider col in colliders)
+        while (elapsedTime < windingDuration && isWindingYarn)
         {
-            if (col == myCollider) continue;
+            elapsedTime += Time.deltaTime;
+            float progress = elapsedTime / windingDuration;
             
-            SpoolItem otherSpool = col.GetComponent<SpoolItem>();
-            if (otherSpool != null)
+       
+            for (int i = activeRolls;i < rolls.Length; i++)
             {
-                return true; // Có item khác đang chặn đường
+                ActivateRoll(i);
             }
-        }
-        
-        return false; // Không có item nào chặn đường
-    }
-
-    private IEnumerator ReturnToInitialPosition()
-    {
-        isMoving = false;
-        
-        float returnDuration = Vector3.Distance(transform.position, initialPosition) / moveSpeed;
-        
-        transform.DOMove(initialPosition, returnDuration)
-            .SetEase(Ease.OutQuad)
-            .OnComplete(() =>
-            {
-                isBlocked = false;
-                blockedTime = 0f;
-                isMoving = false;
-            });
             
-        yield return new WaitForSeconds(returnDuration);
-    }
-
-    private Vector3 GetDirection()
-    {
-        switch (direction)
-        {
-            case Direction.Up:
-                return Vector3.forward;
-            case Direction.Down:
-                return Vector3.back;
-            case Direction.Left:
-                return Vector3.left;
-            case Direction.Right:
-                return Vector3.right;
+            yield return null;
         }
-        return Vector3.zero;
+        OnYarnCompletedAllKnits();
     }
+    #endregion
     
 }
-

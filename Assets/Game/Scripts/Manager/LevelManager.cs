@@ -21,6 +21,7 @@ public class LevelManager : MonoBehaviour
     public PillarController PillarController => pillarController;
     public PathCreator PathCreation => conveyorController.PathCreation;
     public RoadMeshCreator RoadMeshCreator => conveyorController.RoadMeshCreator;
+    public MapController MapController => mapController;
 
     public void Initialize()
     {
