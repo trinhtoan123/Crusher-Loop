@@ -37,12 +37,10 @@ public class SpoolItem : MonoBehaviour
     private PathFollower pathFollower;
     private Rope attachedRope;
     private bool isWindingYarn = false;
-    private bool isCompletedWindingYarn;
     private int activeRolls = 0;
     private bool isBlocked = false;
     private Vector3 initialPosition;
     public bool IsOnPillar => isOnPillar;
-    public bool IsCompletedWindingYarn => isCompletedWindingYarn;
     #endregion
 
     #region Initialization
@@ -328,10 +326,7 @@ public class SpoolItem : MonoBehaviour
     public void OnYarnCompletedAllKnits()
     {
         // Hiệu ứng hoàn thành
-        Debug.Log($"Cuộn len hoàn thành cho spool màu {color}");
         StopSpoolRotation();
-        
-        // Thông báo cho MapController rằng đã hoàn thành cuộn một hàng
         if (mapController != null)
         {
             // Có thể thêm callback hoặc event ở đây nếu cần
@@ -379,11 +374,11 @@ public class SpoolItem : MonoBehaviour
     {
         if (isRotating) return;
         isRotating = true;
-        isCompletedWindingYarn = false;
         float mainTime = 360f / mainRotationSpeed;
         transform.DORotate(new Vector3(0, 360f, 0), mainTime, RotateMode.LocalAxisAdd)
             .SetLoops(-1, LoopType.Incremental)
             .SetEase(Ease.Linear);
+        countKnit++;
     }
 
     private void StopSpoolRotation()
@@ -394,9 +389,8 @@ public class SpoolItem : MonoBehaviour
     }
     public bool CheckCompletedWindingYarn()
     {
-        if (countKnit == 100)
+        if (countKnit == 10)
         {
-            isCompletedWindingYarn = true;
             return true;
         }
         return false;
