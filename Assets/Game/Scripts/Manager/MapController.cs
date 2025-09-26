@@ -9,9 +9,12 @@ public class MapController : MonoBehaviour
 {
     [SerializeField] PillarController pillarController;
     [SerializeField] List<Knit> knitItems = new List<Knit>();
+    [SerializeField] private RopeSetting ropeSettingPrefab;
     private List<SpoolItem> activeSpools = new List<SpoolItem>();
-    private GameObject currentYarnObject;
+    private RopeSetting currentYarnRope;
     public Action<SpoolItem> OnSpoolWinding;
+    private Dictionary<SpoolItem, bool> spoolWindingStates = new Dictionary<SpoolItem, bool>();
+    private Dictionary<SpoolItem, RopeSetting> spoolRopes = new Dictionary<SpoolItem, RopeSetting>();
     void OnEnable()
     {
         OnSpoolWinding += IEStartWinding;
@@ -34,6 +37,15 @@ public class MapController : MonoBehaviour
         {
             return;
         }
+        
+        if (spoolWindingStates.ContainsKey(spoolItem) && spoolWindingStates[spoolItem])
+        {
+            return;
+        }
+        
+        // Đánh dấu spool đang cuộn
+        spoolWindingStates[spoolItem] = true;
+        
         StartCoroutine(ProcessSmartWinding(knitItems,spoolItem));
     }
 
@@ -73,7 +85,6 @@ public class MapController : MonoBehaviour
             Knit currentKnit = sortedKnits[i];
             if (currentKnit == null) continue;
             
-            // Kiểm tra xem hàng này có màu cần tìm không
             bool hasTargetColor = HasColorInRow(currentKnit, color);
             
             if (hasTargetColor)
@@ -122,8 +133,26 @@ public class MapController : MonoBehaviour
     {
         Debug.Log($"🔄 Bắt đầu cuộn len qua {consecutiveRows.Count} hàng liên tiếp");
         
-        GameObject currentYarn = null;
+        // Kiểm tra xem spool đã có dây chưa, nếu có thì hủy dây cũ
+        if (spoolRopes.ContainsKey(spool) && spoolRopes[spool] != null)
+        {
+            Destroy(spoolRopes[spool].gameObject);
+            spoolRopes.Remove(spool);
+            Debug.Log($"🗑️ Hủy dây cũ của spool {spool.color}");
+        }
         
+        // Tạo một dây duy nhất cho tất cả các hàng
+        RopeSetting continuousRope = Instantiate(ropeSettingPrefab);
+        continuousRope.name = $"Rope_{spool.color}";
+        spoolRopes[spool] = continuousRope;
+        
+        // Cấu hình dây
+        continuousRope.SetLineRenderer(GetYarnMaterial(spool.color));
+        continuousRope.SetStart(spool.transform.GetChild(0).position);
+        continuousRope.SetCurveParameters(0.5f, 1.0f, 0.05f, 0.8f);
+        continuousRope.SetAutoMoveToNextEnd(true, 0.2f);
+        
+        // Thêm tất cả điểm đích từ tất cả các hàng vào một dây duy nhất
         for (int i = 0; i < consecutiveRows.Count; i++)
         {
             Knit currentRow = consecutiveRows[i];
@@ -134,143 +163,60 @@ public class MapController : MonoBehaviour
             
             Debug.Log($"📏 Hàng {i + 1}: {direction}");
             
-            // Chỉ xóa sợi len cũ khi cuộn từ trái sang phải
-            if (isLeftToRight && currentYarn != null)
+            // Lấy các điểm đích trong hàng này
+            List<KnitChild> targetChildren = GetTargetChildrenInRow(currentRow, spool.color);
+            
+            // Sắp xếp theo hướng cuộn len
+            if (isLeftToRight)
             {
-                Destroy(currentYarn);
-                Debug.Log($"🗑️ Xóa sợi len cũ (cuộn từ trái sang phải)");
+                targetChildren.Sort((a, b) => a.transform.position.x.CompareTo(b.transform.position.x));
             }
-            else if (!isLeftToRight)
+            else
             {
-                Debug.Log($"🔄 Giữ nguyên sợi len (cuộn từ phải sang trái)");
+                targetChildren.Sort((a, b) => b.transform.position.x.CompareTo(a.transform.position.x));
             }
             
-            // Tạo sợi len mới cho hàng này
-            yield return StartCoroutine(WindSingleRowWithNewYarn(spool, currentRow, isLeftToRight));
-            currentYarn = currentYarnObject;
+            // Thêm các điểm đích vào dây (không tạo dây mới)
+            foreach (var child in targetChildren)
+            {
+                continuousRope.AddEndPoint(child.transform.position);
+            }
             
-            // Delay giữa các hàng
-            yield return new WaitForSeconds(0.5f);
+            Debug.Log($"📏 Hàng {i + 1}: {direction} - {targetChildren.Count} điểm");
         }
         
-        // Xóa sợi len cuối cùng sau khi hoàn thành tất cả hàng
-        if (currentYarn != null)
-        {
-            Destroy(currentYarn);
-            Debug.Log($"🗑️ Xóa sợi len cuối cùng (hoàn thành tất cả hàng)");
-        }
+        // Chờ cho đến khi hoàn thành tất cả điểm đích
+        yield return new WaitUntil(() => continuousRope.GetCurrentEndIndex() == continuousRope.GetEndPointsCount() - 1);
+        yield return new WaitForSeconds(0.3f);
         
-        Debug.Log($"✅ Hoàn thành cuộn len qua {consecutiveRows.Count} hàng");
+        // Bắt đầu cuộn len
+        spool.StartWinding(null);
+        
+        yield return new WaitForSeconds(0.5f);
+        
+        currentYarnRope = continuousRope;
+        
+        Debug.Log($"✅ Hoàn thành cuộn len qua {consecutiveRows.Count} hàng với một dây liên tục");
     }
     
     /// <summary>
-    /// Cuộn len qua một hàng cụ thể với sợi len mới
+    /// Lấy các KnitChild có màu cụ thể trong một hàng
     /// </summary>
-    private IEnumerator WindSingleRowWithNewYarn(SpoolItem spool, Knit row, bool leftToRight)
+    private List<KnitChild> GetTargetChildrenInRow(Knit row, ColorRope targetColor)
     {
-        GameObject yarnObject = null;
-        
-        // Tìm tất cả KnitChild có màu của spool trong hàng này
         List<KnitChild> targetChildren = new List<KnitChild>();
         
         foreach (var knitChild in row.KnitItems)
         {
-            if (knitChild != null && knitChild.Color == spool.color)
+            if (knitChild != null && knitChild.Color == targetColor)
             {
                 targetChildren.Add(knitChild);
             }
         }
         
-        if (targetChildren.Count == 0)
-        {
-            Debug.LogWarning($"⚠️ Không tìm thấy KnitChild nào có màu {spool.color} trong hàng");
-            yield break;
-        }
-        
-        // Sắp xếp theo hướng
-        if (leftToRight)
-        {
-            targetChildren.Sort((a, b) => a.transform.position.x.CompareTo(b.transform.position.x));
-        }
-        else
-        {
-            targetChildren.Sort((a, b) => b.transform.position.x.CompareTo(a.transform.position.x));
-        }
-        
-        string direction = leftToRight ? "trái sang phải" : "phải sang trái";
-        Debug.Log($"🎯 Cuộn len qua {targetChildren.Count} items từ {direction}");
-        
-        // Tạo hiệu ứng cuộn len với sợi len mới
-        yield return StartCoroutine(CreateWindingEffectWithNewYarn(spool, targetChildren));
-        yarnObject = currentYarnObject;
+        return targetChildren;
     }
     
-    /// <summary>
-    /// Tạo hiệu ứng cuộn len với sợi len mới
-    /// </summary>
-    private IEnumerator CreateWindingEffectWithNewYarn(SpoolItem spool, List<KnitChild> targetChildren)
-    {
-        // Tạo sợi len mới
-        GameObject yarnObject = new GameObject($"Yarn_{spool.color}_{Time.time}");
-        LineRenderer yarnRenderer = yarnObject.AddComponent<LineRenderer>();
-        
-        // Cấu hình LineRenderer
-        yarnRenderer.material = GetYarnMaterial(spool.color);
-        yarnRenderer.startWidth = 0.1f;
-        yarnRenderer.endWidth = 0.1f;
-        
-        // Tạo đường đi
-        List<Vector3> pathPoints = new List<Vector3>();
-        
-        // Thêm vị trí của tất cả target children
-        foreach (var child in targetChildren)
-        {
-            pathPoints.Add(child.transform.position);
-        }
-        
-        // Thêm vị trí của spool
-        pathPoints.Add(spool.transform.position);
-        
-        // Cấu hình LineRenderer
-        yarnRenderer.positionCount = pathPoints.Count;
-        for (int i = 0; i < pathPoints.Count; i++)
-        {
-            yarnRenderer.SetPosition(i, pathPoints[i]);
-        }
-        
-        // Animation len chạy
-        float duration = 1.5f;
-        float elapsedTime = 0f;
-        
-        while (elapsedTime < duration)
-        {
-            elapsedTime += Time.deltaTime;
-            float progress = elapsedTime / duration;
-            
-            // Tính toán vị trí hiện tại trên đường đi
-            int segmentIndex = Mathf.FloorToInt(progress * (pathPoints.Count - 1));
-            segmentIndex = Mathf.Clamp(segmentIndex, 0, pathPoints.Count - 2);
-            
-            float segmentProgress = (progress * (pathPoints.Count - 1)) - segmentIndex;
-            Vector3 currentPos = Vector3.Lerp(pathPoints[segmentIndex], pathPoints[segmentIndex + 1], segmentProgress);
-            
-            // Cập nhật vị trí cuối của sợi len
-            yarnRenderer.SetPosition(yarnRenderer.positionCount - 1, currentPos);
-            
-            yield return null;
-        }
-        
-        // Bắt đầu cuộn len
-        spool.StartWinding(null);
-        
-        // Hiệu ứng cuộn len
-        yield return new WaitForSeconds(0.5f);
-        
-        Debug.Log($"✨ Hoàn thành cuộn len cho hàng này");
-        
-        // Lưu yarnObject vào biến class để có thể truy cập từ bên ngoài
-        currentYarnObject = yarnObject;
-    }
     
     /// <summary>
     /// Làm cuộn len biến mất
@@ -278,6 +224,21 @@ public class MapController : MonoBehaviour
     private IEnumerator MakeSpoolDisappear(SpoolItem spool)
     {
         Debug.Log($"👻 Cuộn len {spool.color} biến mất");
+        
+        // Đánh dấu spool dừng cuộn
+        spoolWindingStates[spool] = false;
+        
+        // Hủy dây tương ứng
+        if (spoolRopes.ContainsKey(spool))
+        {
+            RopeSetting ropeToDestroy = spoolRopes[spool];
+            if (ropeToDestroy != null)
+            {
+                Destroy(ropeToDestroy.gameObject);
+                Debug.Log($"🗑️ Đã hủy dây cho spool {spool.color}");
+            }
+            spoolRopes.Remove(spool);
+        }
         
         // Hiệu ứng biến mất
         spool.transform.DOScale(Vector3.zero, 0.5f)
@@ -308,141 +269,6 @@ public class MapController : MonoBehaviour
     }
 
 
-    /// <summary>
-    /// Dừng tất cả quá trình cuộn len đang diễn ra
-    /// </summary>
-    public void StopAllYarnWinding()
-    {
-        Debug.Log("🛑 Dừng tất cả quá trình cuộn len...");
-        
-        foreach (var knit in knitItems)
-        {
-            if (knit != null)
-            {
-                knit.StopAutoWinding();
-            }
-        }
-    }
-
-    /// <summary>
-    /// Kiểm tra input debug để test chức năng
-    /// </summary>
-    private void Update()
-    {
-        HandleDebugInput();
-    }
-
-    private void HandleDebugInput()
-    {
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            Debug.Log("🎯 Nhấn R - Bắt đầu cuộn len thông minh");
-        }
-        
-        if (Input.GetKeyDown(KeyCode.Y))
-        {
-            Debug.Log("🛑 Nhấn Y - Dừng tất cả quá trình cuộn len");
-            StopAllYarnWinding();
-        }
-        
-        if (Input.GetKeyDown(KeyCode.P))
-        {
-            Debug.Log("📋 Nhấn P - Hiển thị thông tin chi tiết về hệ thống cuộn len");
-            ShowSmartWindingDetails();
-        }
-        
-        if (Input.GetKeyDown(KeyCode.L))
-        {
-            Debug.Log("🔄 Nhấn L - Kiểm tra chuỗi màu liên tiếp");
-            CheckConsecutiveColorSequences();
-        }
-    }
-
-
-    /// <summary>
-    /// Hiển thị thông tin chi tiết về hệ thống cuộn len thông minh
-    /// </summary>
-    public void ShowSmartWindingDetails()
-    {
-        Debug.Log("🧠 === THÔNG TIN HỆ THỐNG CUỘN LEN THÔNG MINH ===");
-        
-        // Tìm tất cả cuộn len có sẵn
-        SpoolItem[] availableSpools = FindObjectsOfType<SpoolItem>();
-        Debug.Log($"🎯 Tìm thấy {availableSpools.Length} cuộn len trong scene");
-        
-        // Sắp xếp knitItems theo vị trí Y (từ trên xuống dưới)
-        List<Knit> sortedKnits = new List<Knit>(knitItems);
-        sortedKnits.Sort((a, b) => b.transform.position.y.CompareTo(a.transform.position.y));
-        
-        foreach (var spool in availableSpools)
-        {
-            if (spool != null)
-            {
-                ColorRope spoolColor = spool.color;
-                List<Knit> consecutiveRows = FindConsecutiveRowsWithColor(spoolColor, sortedKnits);
-                
-                Debug.Log($"🎨 Cuộn len {spoolColor}:");
-                Debug.Log($"   📋 Có {consecutiveRows.Count} hàng liên tiếp");
-                
-                for (int i = 0; i < consecutiveRows.Count; i++)
-                {
-                    bool isLeftToRight = (i % 2 == 0);
-                    string direction = isLeftToRight ? "Trái → Phải" : "Phải → Trái";
-                    Debug.Log($"   📏 Hàng {i + 1}: {direction}");
-                }
-                
-                if (consecutiveRows.Count == 0)
-                {
-                    Debug.Log($"   ❌ Không có hàng nào có màu {spoolColor}");
-                }
-            }
-        }
-        
-        Debug.Log("🧠 === KẾT THÚC THÔNG TIN ===");
-    }
-    
-    /// <summary>
-    /// Kiểm tra chuỗi màu liên tiếp cho tất cả cuộn len
-    /// </summary>
-    public void CheckConsecutiveColorSequences()
-    {
-        Debug.Log("🔍 === KIỂM TRA CHUỖI MÀU LIÊN TIẾP ===");
-        
-        // Sắp xếp knitItems theo vị trí Y (từ trên xuống dưới)
-        List<Knit> sortedKnits = new List<Knit>(knitItems);
-        sortedKnits.Sort((a, b) => b.transform.position.y.CompareTo(a.transform.position.y));
-        
-        // Tìm tất cả cuộn len có sẵn
-        SpoolItem[] availableSpools = FindObjectsOfType<SpoolItem>();
-        
-        foreach (var spool in availableSpools)
-        {
-            if (spool != null)
-            {
-                ColorRope spoolColor = spool.color;
-                List<Knit> consecutiveRows = FindConsecutiveRowsWithColor(spoolColor, sortedKnits);
-                
-                Debug.Log($"🎨 Cuộn len {spoolColor}: {consecutiveRows.Count} hàng liên tiếp");
-                
-                if (consecutiveRows.Count > 0)
-                {
-                    Debug.Log($"   ✅ Có thể cuộn len qua {consecutiveRows.Count} hàng");
-                    for (int i = 0; i < consecutiveRows.Count; i++)
-                    {
-                        bool isLeftToRight = (i % 2 == 0);
-                        string direction = isLeftToRight ? "Trái → Phải" : "Phải → Trái";
-                        Debug.Log($"   📏 Hàng {i + 1}: {direction}");
-                    }
-                }
-                else
-                {
-                    Debug.Log($"   ❌ Không thể cuộn len - không có hàng liên tiếp");
-                }
-            }
-        }
-        
-        Debug.Log("🔍 === KẾT THÚC KIỂM TRA ===");
-    }
-
+ 
+  
 }
-

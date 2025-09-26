@@ -72,7 +72,6 @@ GameObject:
   m_Component:
   - component: {fileID: 29691021000780747}
   - component: {fileID: 7711759585538850956}
-  - component: {fileID: 4434143182886535568}
   - component: {fileID: 8303462346711035175}
   m_Layer: 0
   m_Name: Rope
@@ -260,28 +259,6 @@ LineRenderer:
   m_UseWorldSpace: 1
   m_Loop: 0
   m_ApplyActiveColorSpace: 1
---- !u!114 &4434143182886535568
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5798273969116456783}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e2fcc597881599646a35e7161a5504ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  startPoint: {fileID: 5030651515034366733}
-  midPoint: {fileID: 2696271116732867762}
-  endPoint: {fileID: 2423780943460835279}
-  linePoints: 49
-  stiffness: 650
-  damping: 4.89
-  ropeLength: 6
-  ropeWidth: 0.16
-  midPointWeight: 3.6
-  midPointPosition: 0.545
 --- !u!114 &8303462346711035175
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -294,9 +271,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 170bbd5988075104a9826a3ca2aaa30e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveDuration: 0.5
-  startPoint: {fileID: 5030651515034366733}
-  endPoint: {fileID: 2423780943460835279}
+  segments: 45
+  sagFactor: 0.08
+  gravityDir: {x: 0, y: -1, z: 0}
+  curveIntensity: 1
+  waveFrequency: 2
+  waveAmplitude: 0.1
+  smoothness: 0.5
+  moveSpeed: 6
 --- !u!1 &6670623516427272877
 GameObject:
   m_ObjectHideFlags: 0
