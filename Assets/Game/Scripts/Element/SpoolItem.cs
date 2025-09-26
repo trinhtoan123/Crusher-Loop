@@ -10,7 +10,7 @@ using GogoGaga.OptimizedRopesAndCables;
 public class SpoolItem : MonoBehaviour
 {
     #region Fields & Properties
-    [SerializeField]  public ColorRope color;
+    [SerializeField] public ColorRope color;
     [SerializeField] private Direction direction;
     [SerializeField] private MeshRenderer material;
     [SerializeField] private Image image;
@@ -20,12 +20,13 @@ public class SpoolItem : MonoBehaviour
     [SerializeField] private float pillarDetectionDistance;
     [SerializeField] private float conveyorDetectionDistance;
     [SerializeField] private float jumpHeight;
-    [SerializeField] private float mainRotationSpeed = 30f; 
+    [SerializeField] private float mainRotationSpeed = 30f;
     [SerializeField] private float yarnConnectionHeightOffset = 0.3f;
     [SerializeField] private float processRope;
-    [SerializeField] private int countKnit;
+    [SerializeField] private int totalRolls = 48; // Tổng số rolls cần để hoàn thành
+    private PillarItem pillarItem;
     private bool isRotating = false;
-    private Transform spoolTransform; 
+    private Transform spoolTransform;
     private float conveyorDistance;
     private SpoolController spoolController;
     private MapController mapController;
@@ -35,12 +36,12 @@ public class SpoolItem : MonoBehaviour
     private bool isOnConveyor = false;
     private bool isOnPillar = false;
     private PathFollower pathFollower;
-    private Rope attachedRope;
     private bool isWindingYarn = false;
     private int activeRolls = 0;
     private bool isBlocked = false;
     private Vector3 initialPosition;
     public bool IsOnPillar => isOnPillar;
+    public bool IsWindingYarn => isWindingYarn;
     #endregion
 
     #region Initialization
@@ -94,8 +95,14 @@ public class SpoolItem : MonoBehaviour
             }
         }
         CreateAnchorPoint();
+        LoadSpool();
     }
-    
+    private void LoadSpool()
+    {
+        activeRolls = 0;
+        ResetAllRolls();
+    }
+
     private Transform CreateAnchorPoint()
     {
         GameObject anchorPoint = new GameObject("Anchor");
@@ -115,7 +122,7 @@ public class SpoolItem : MonoBehaviour
             StartCoroutine(IEMoveInDirection());
         }
     }
-    
+
     private IEnumerator IEMoveInDirection()
     {
         Vector3 moveDirection = GetDirection();
@@ -131,11 +138,11 @@ public class SpoolItem : MonoBehaviour
             }
             else
             {
-             
+
                 isBlocked = false;
                 transform.position += moveDirection * moveSpeed * Time.deltaTime;
             }
-            
+
             CheckConveyorDistance();
             yield return null;
         }
@@ -144,35 +151,35 @@ public class SpoolItem : MonoBehaviour
     private bool TriggerSpoolOther()
     {
         Vector3 moveDirection = GetDirection();
-        Vector3 checkPosition = transform.position + moveDirection * 1f; 
-        
+        Vector3 checkPosition = transform.position + moveDirection * 1f;
+
         Collider[] colliders = Physics.OverlapSphere(checkPosition, 0.5f);
-        
+
         foreach (Collider col in colliders)
         {
             if (col == myCollider) continue;
-            
+
             SpoolItem otherSpool = col.GetComponent<SpoolItem>();
             if (otherSpool != null)
             {
-                return true; 
+                return true;
             }
         }
-        
-        return false; 
+
+        return false;
     }
 
     private IEnumerator MoveToPath()
     {
         float returnDuration = Vector3.Distance(transform.position, initialPosition) / moveSpeed;
-        
+
         transform.DOMove(initialPosition, returnDuration)
             .SetEase(Ease.OutQuad)
             .OnComplete(() =>
             {
                 isBlocked = false;
             });
-            
+
         yield return new WaitForSeconds(returnDuration);
     }
 
@@ -201,7 +208,7 @@ public class SpoolItem : MonoBehaviour
             PathCreator pathCreator = levelManager.PathCreation;
             Vector3 closestPoint = pathCreator.path.GetClosestPointOnPath(transform.position);
             float distanceToConveyor = Vector3.Distance(transform.position, closestPoint);
-            
+
             if (distanceToConveyor <= conveyorDetectionDistance)
             {
                 if (!TriggerSpoolOther())
@@ -211,7 +218,7 @@ public class SpoolItem : MonoBehaviour
             }
         }
     }
-    
+
     private void JumpToConveyor(Vector3 conveyorPoint)
     {
         if (isOnConveyor) return;
@@ -219,7 +226,7 @@ public class SpoolItem : MonoBehaviour
         Vector3 availablePosition = levelManager.ConveyorController.GetAvailablePositionOnConveyor(conveyorPoint);
         conveyorDistance = levelManager.PathCreation.path.GetClosestDistanceAlongPath(availablePosition);
         availablePosition = new Vector3(availablePosition.x, availablePosition.y + 0.7f, availablePosition.z);
-        
+
         transform.DOJump(availablePosition, jumpHeight, 1, jumpDuration)
             .SetEase(Ease.OutQuad)
             .OnComplete(() =>
@@ -270,17 +277,22 @@ public class SpoolItem : MonoBehaviour
 
     private void CheckPillarDistance()
     {
-        if (levelManager?.ConveyorController?.PositionStart == null || isOnPillar) return;
-        
+        if (levelManager?.ConveyorController?.PositionStart == null) return;
+
         Transform positionStart = levelManager.ConveyorController.PositionStart;
         float distanceToPillar = Vector3.Distance(transform.position, positionStart.position);
-        
+
         if (distanceToPillar <= pillarDetectionDistance)
         {
-            PillarItem availablePillar = PillarController.instance.GetAvailablePillar();
-            if (availablePillar != null && !isOnPillar)
+            // Kiểm tra null cho PillarController.instance
+            if (PillarController.instance == null) return;
+            
+            pillarItem = PillarController.instance.GetAvailablePillar();
+            if (pillarItem != null)
             {
-                JumpToPillar(availablePillar);
+                // Đặt spool vào pillar trước khi jump
+                pillarItem.SetEmpty(false, this);
+                JumpToPillar(pillarItem);
             }
         }
     }
@@ -298,7 +310,6 @@ public class SpoolItem : MonoBehaviour
         transform.DOJump(targetPosition, jumpHeight, 1, jumpDuration)
             .OnComplete(() =>
             {
-                targetPillar.SetEmpty(false, this);
                 StopAllCoroutines();
                 mapController.OnSpoolWinding?.Invoke(this);
             });
@@ -310,38 +321,20 @@ public class SpoolItem : MonoBehaviour
     #region Winding State - Cuốn sợi len
     public void StartWinding(Rope rope)
     {
-        if (attachedRope != null)
-        {
-            StopWindingYarn();
-        }
-        attachedRope = rope;
         isWindingYarn = true;
-        activeRolls = 0;
-        
-        ResetAllRolls();
-        StartSpoolRotation();
-        StartCoroutine(WindingYarnCoroutine());
-    }
-
-    public void OnYarnCompletedAllKnits()
-    {
-        // Hiệu ứng hoàn thành
-        StopSpoolRotation();
-        if (mapController != null)
+        if (!isRotating)
         {
-            // Có thể thêm callback hoặc event ở đây nếu cần
+            isRotating = true;
+            float mainTime = 360f / mainRotationSpeed;
+            transform.DORotate(new Vector3(0, 360f, 0), mainTime, RotateMode.LocalAxisAdd)
+                .SetLoops(-1, LoopType.Incremental)
+                .SetEase(Ease.Linear);
         }
     }
-
+ 
     public void StopWindingYarn()
     {
         isWindingYarn = false;
-        if (attachedRope != null)
-        {
-            attachedRope = null;
-        }
-        
-        // Dừng hiệu ứng xoay
         StopSpoolRotation();
         StopAllCoroutines();
     }
@@ -349,7 +342,7 @@ public class SpoolItem : MonoBehaviour
     private void ResetAllRolls()
     {
         if (rolls == null || rolls.Length == 0) return;
-        
+
         activeRolls = 0;
         foreach (var roll in rolls)
         {
@@ -359,7 +352,7 @@ public class SpoolItem : MonoBehaviour
 
     private void ActivateRoll(int rollIndex)
     {
-        if (rollIndex >= rolls.Length) 
+        if (rollIndex >= rolls.Length)
         {
             return;
         }
@@ -369,56 +362,39 @@ public class SpoolItem : MonoBehaviour
             activeRolls++;
         }
     }
-
-    private void StartSpoolRotation()
-    {
-        if (isRotating) return;
-        isRotating = true;
-        float mainTime = 360f / mainRotationSpeed;
-        transform.DORotate(new Vector3(0, 360f, 0), mainTime, RotateMode.LocalAxisAdd)
-            .SetLoops(-1, LoopType.Incremental)
-            .SetEase(Ease.Linear);
-        countKnit++;
-    }
-
     private void StopSpoolRotation()
     {
         isRotating = false;
         if (spoolTransform != null) spoolTransform.DOKill();
         transform.DOKill();
     }
+
+    public void UpdateRoll()
+    {
+        if (activeRolls < totalRolls && rolls != null && activeRolls < rolls.Length)
+        {
+            ActivateRoll(activeRolls);
+            if (CheckCompletedWindingYarn())
+            {
+                StopSpoolRotation();
+            }
+        }
+    }
+    public void CompleteSpool()
+    {
+        transform.DOScale(Vector3.zero, 0.5f)
+            .SetEase(Ease.InBack)
+            .OnComplete(() =>
+            {
+                pillarItem.SetEmpty(true, null);
+                gameObject.SetActive(false);
+            });
+    }
     public bool CheckCompletedWindingYarn()
     {
-        if (countKnit == 10)
-        {
-            return true;
-        }
-        return false;
-    }
 
-    /// <summary>
-    /// Coroutine mô phỏng việc thu sợi len
-    /// </summary>
-    private IEnumerator WindingYarnCoroutine()
-    {
-        float windingDuration = 2f; // Thời gian thu sợi len
-        float elapsedTime = 0f;
-
-        while (elapsedTime < windingDuration && isWindingYarn)
-        {
-            elapsedTime += Time.deltaTime;
-            float progress = elapsedTime / windingDuration;
-
-
-            for (int i = activeRolls; i < rolls.Length; i++)
-            {
-                ActivateRoll(i);
-            }
-
-            yield return null;
-        }
-        // OnYarnCompletedAllKnits();
+        return activeRolls >= totalRolls;
     }
     #endregion
-    
+
 }

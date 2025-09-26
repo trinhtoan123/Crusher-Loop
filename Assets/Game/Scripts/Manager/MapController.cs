@@ -12,6 +12,8 @@ public class MapController : MonoBehaviour
     private List<SpoolItem> activeSpools = new List<SpoolItem>();
     private RopeSetting currentYarnRope;
     public Action<SpoolItem> OnSpoolWinding;
+    private Dictionary<ColorRope, Queue<SpoolItem>> colorQueues = new Dictionary<ColorRope, Queue<SpoolItem>>();
+    private Dictionary<ColorRope, bool> isColorProcessing = new Dictionary<ColorRope, bool>();
     void OnEnable()
     {
         OnSpoolWinding += IEStartWinding;
@@ -35,8 +37,8 @@ public class MapController : MonoBehaviour
             return;
         }
         
-        
-        StartCoroutine(ProcessSmartWinding(knitItems,spoolItem));
+        // Thêm spool vào hàng đợi theo màu
+        AddSpoolToQueue(spoolItem);
     }
 
     private IEnumerator ProcessSmartWinding(List<Knit> sortedKnits, SpoolItem itemSpool)
@@ -72,22 +74,10 @@ public class MapController : MonoBehaviour
                 {
                     // Cuộn hàng hiện tại và đợi hoàn thành
                     yield return StartCoroutine(WindThroughSingleRow(spool, currentRow, currentRowIndex));
-                    
-                    // Sau khi cuộn xong, destroy dây ngay lập tức
-                    if (currentYarnRope != null)
-                    {
-                        Destroy(currentYarnRope.gameObject);
-                        currentYarnRope = null;
-                    }
                 }
                 else
                 {
-                    // Không thể cuộn được trong hàng này, destroy dây ngay lập tức
-                    if (currentYarnRope != null)
-                    {
-                        Destroy(currentYarnRope.gameObject);
-                        currentYarnRope = null;
-                    }
+                   StopWindingYarn(spool);
                 }
                 
                 // Đợi hàng hiện tại hoàn thành trước khi chuyển sang hàng tiếp theo
@@ -96,14 +86,7 @@ public class MapController : MonoBehaviour
             }
             else
             {
-              
-                if (currentYarnRope != null)
-                {
-                    Destroy(currentYarnRope.gameObject);
-                    currentYarnRope = null;
-                }
-                
-                // Đợi hàng này hoàn thành trước khi chuyển sang hàng tiếp theo
+                StopWindingYarn(spool);
                 yield return new WaitUntil(() => IsRowCompleted(currentRow));
                 currentRowIndex++;
             }
@@ -114,7 +97,18 @@ public class MapController : MonoBehaviour
             yield return StartCoroutine(MakeSpoolDisappear(spool));
         }
     }
-   
+   private void StopWindingYarn(SpoolItem spool)
+   {
+        if (currentYarnRope != null)
+        {
+            Destroy(currentYarnRope.gameObject);
+            currentYarnRope = null;
+        }
+        if (spool.IsWindingYarn)
+        {
+            spool.StopWindingYarn();
+        }
+   }
 
     private bool HasColorInRow(Knit knit, ColorRope targetColor)
     {
@@ -167,10 +161,10 @@ public class MapController : MonoBehaviour
 
     private IEnumerator WindThroughSingleRow(SpoolItem spool, Knit currentRow, int rowIndex)
     {
-        // Destroy line cũ nếu có
+        // Destroy line cũ nếu có - đảm bảo destroy hoàn toàn
         if (currentYarnRope != null)
         {
-            Destroy(currentYarnRope.gameObject);
+            DestroyImmediate(currentYarnRope.gameObject);
             currentYarnRope = null;
         }
         
@@ -180,13 +174,15 @@ public class MapController : MonoBehaviour
             yield break; // Không thể cuộn được, thoát khỏi hàm
         }
         
-        // Tạo line mới cho hàng này
+        // Tạo line mới cho hàng này - đảm bảo tạo mới hoàn toàn
         RopeSetting singleRowRope = Instantiate(ropeSettingPrefab);
         singleRowRope.SetLineRenderer(GetYarnMaterial(spool.color), spool.transform.GetChild(0));
         Dictionary<Transform, KnitChild> targetChildren = GetTargetChildrenInRow(currentRow, spool.color);
         List<Transform> sortedTransforms = new List<Transform>(targetChildren.Keys);
         
         bool isLeftToRight = (rowIndex % 2 == 0);
+        Debug.Log($"Hàng {rowIndex}: {(isLeftToRight ? "Trái sang phải" : "Phải sang trái")} - Tạo dây mới");
+        
         if (isLeftToRight)
         {
             // Hàng lẻ: từ trái sang phải
@@ -203,18 +199,26 @@ public class MapController : MonoBehaviour
             singleRowRope.AddEndPoint(transform.position);
         }
         
-        yield return ProcessEachPoint(sortedTransforms, targetChildren, singleRowRope);
+        if (!spool.IsWindingYarn)
+        {
+            spool.StartWinding(null);
+        }
+        
+        yield return ProcessEachPoint(sortedTransforms, targetChildren, singleRowRope, spool);
         yield return new WaitUntil(() => singleRowRope.GetCurrentEndIndex() >= singleRowRope.GetEndPointsCount() - 1);
         yield return new WaitForSeconds(0.2f);
         
-        spool.StartWinding(null);
-        currentYarnRope = singleRowRope;
-        
         // Đợi cho đến khi màu này hoàn thành cuộn trong hàng
         yield return new WaitUntil(() => !CanWindInRow(currentRow, spool.color));
+        
+        // Destroy dây sau khi hoàn thành hàng
+        if (singleRowRope != null)
+        {
+            Destroy(singleRowRope.gameObject);
+        }
     }
     
-    private IEnumerator ProcessEachPoint(List<Transform> sortedTransforms, Dictionary<Transform, KnitChild> targetChildren, RopeSetting singleRowRope)
+    private IEnumerator ProcessEachPoint(List<Transform> sortedTransforms, Dictionary<Transform, KnitChild> targetChildren, RopeSetting singleRowRope, SpoolItem spool)
     {
         Transform previousChildTransform = null;
         
@@ -225,6 +229,7 @@ public class MapController : MonoBehaviour
             if (previousChildTransform != null)
             {
                 SetChildItemClear(previousChildTransform);
+                spool.UpdateRoll();
             }
 
             previousChildTransform = sortedTransforms[i].parent;
@@ -272,14 +277,7 @@ public class MapController : MonoBehaviour
             Destroy(currentYarnRope.gameObject);
             currentYarnRope = null;
         }
-        
-        spool.transform.DOScale(Vector3.zero, 0.5f)
-            .SetEase(Ease.InBack)
-            .OnComplete(() =>
-            {
-                spool.gameObject.SetActive(false);
-            });
-        
+        spool.CompleteSpool();
         yield return new WaitForSeconds(0.5f);
     }
     
@@ -296,4 +294,54 @@ public class MapController : MonoBehaviour
 
         return null;
     }
+    
+    #region Queue Management System
+    
+    /// <summary>
+    /// Thêm spool vào hàng đợi theo màu
+    /// </summary>
+    private void AddSpoolToQueue(SpoolItem spoolItem)
+    {
+        ColorRope spoolColor = spoolItem.color;
+        
+        // Khởi tạo queue cho màu này nếu chưa có
+        if (!colorQueues.ContainsKey(spoolColor))
+        {
+            colorQueues[spoolColor] = new Queue<SpoolItem>();
+            isColorProcessing[spoolColor] = false;
+        }
+        
+        // Thêm spool vào queue
+        colorQueues[spoolColor].Enqueue(spoolItem);
+        
+        // Bắt đầu xử lý nếu màu này chưa đang được xử lý
+        if (!isColorProcessing[spoolColor])
+        {
+            StartCoroutine(ProcessColorQueue(spoolColor));
+        }
+    }
+    
+    /// <summary>
+    /// Xử lý hàng đợi cho một màu cụ thể
+    /// </summary>
+    private IEnumerator ProcessColorQueue(ColorRope color)
+    {
+        isColorProcessing[color] = true;
+        
+        while (colorQueues[color].Count > 0)
+        {
+            SpoolItem currentSpool = colorQueues[color].Dequeue();
+            
+            // Xử lý cuộn len cho spool hiện tại
+            yield return StartCoroutine(ProcessSmartWinding(knitItems, currentSpool));
+            
+            // Đợi một chút trước khi xử lý spool tiếp theo
+            yield return new WaitForSeconds(0.1f);
+        }
+        
+        isColorProcessing[color] = false;
+    }
+    
+    
+    #endregion
 }

@@ -25,12 +25,12 @@ public class PillarItem : MonoBehaviour
         }
     }
 
-    public SpoolItem GetSpoolItem()
+   
+    public bool CanAcceptSpoolItem()
     {
-        return spoolItem;
+        return isEmpty && spoolItem == null;
     }
 
-   
 
     public bool HasSpoolItem()
     {
