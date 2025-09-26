@@ -62,4 +62,4 @@ MonoBehaviour:
     sprite: {fileID: 21300000, guid: 76c8f70bd0fe3884c8c3928000ebd26a, type: 3}
   - direction: 3
     sprite: {fileID: 21300000, guid: 89bcb4d3951aa704892c06680b63cb09, type: 3}
-  materialKnitClear: {fileID: 0}
+  materialKnitClear: {fileID: 2100000, guid: 18bfc4e4b792dc94a8ec271ecaa429c1, type: 2}

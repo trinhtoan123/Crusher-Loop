@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
+using System;
+
 public class RopeSetting : MonoBehaviour
 {
     [Range(4,128)] [SerializeField] private int segments = 40;
@@ -13,29 +15,34 @@ public class RopeSetting : MonoBehaviour
     private Transform startPoint; 
     private List<Transform> endTargets = new List<Transform>();
     private int currentEndIndex = 0;
+    private int previousEndIndex = -1; // Track điểm trước đó
     public float moveSpeed = 6f;
     private LineRenderer lr;
     private Vector3 currentEnd;
     private Transform _startDummy;
     private Transform _endDummy;
-    private bool isMovingToNextEnd = false;
     private bool autoMoveToNextEnd = false;
     private float delayBetweenMoves = 1.0f;
     private float lastMoveTime = 0f;
-    private Vector3 previousEndPosition;
     private Vector3 velocity;
-    private float timeSinceLastMove = 0f;
     private float ropeTension = 0f;
+    
+    public Action<Vector3> OnReachTarget;
 
     void Awake(){
         lr = GetComponent<LineRenderer>();
         lr.positionCount = segments;
         UpdateCurrentEnd();
     }
-    public void SetLineRenderer(Material color){
+    public void SetLineRenderer(Material color, Transform startPoint)
+    {
         lr.material = color;
         lr.startWidth = 0.1f;
         lr.endWidth = 0.1f;
+        SetStart(startPoint.position);
+        sagFactor = -0.6f;
+        SetCurveParameters(0.26f, 1.0f, 0.5f, 0.8f);
+        SetAutoMoveToNextEnd(true, 0.2f);
     }
 
     Transform MakeDummy(string n){
@@ -56,7 +63,6 @@ public class RopeSetting : MonoBehaviour
         
         float distance = Vector3.Distance(p0, currentEnd);
         ropeTension = Mathf.Clamp01(distance / 10f); 
-        timeSinceLastMove += Time.deltaTime;
         
         DrawRopeWithCurve(p0, currentEnd);
         
@@ -66,11 +72,8 @@ public class RopeSetting : MonoBehaviour
             {
                 MoveToNextEnd();
                 lastMoveTime = Time.time;
-                timeSinceLastMove = 0f;
             }
         }
-        
-        previousEndPosition = currentEnd;
     }
 
     void DrawRopeWithCurve(Vector3 p0, Vector3 p2){
@@ -143,23 +146,22 @@ public class RopeSetting : MonoBehaviour
     
     public void AddEndPoint(Vector3 position)
     {
-        if (_endDummy == null) _endDummy = MakeDummy("_end");
-        _endDummy.position = position;
-        if (!endTargets.Contains(_endDummy))
-        {
-            endTargets.Add(_endDummy);
-            UpdateCurrentEnd();
-        }
+        Transform newEndDummy = MakeDummy("_end_" + endTargets.Count);
+        newEndDummy.position = position;
+        endTargets.Add(newEndDummy);
+        UpdateCurrentEnd();
     }
     public void MoveToNextEnd()
     {
-        if (endTargets.Count > 1)
+        if (endTargets.Count > 1 && currentEndIndex < endTargets.Count - 1)
         {
-            currentEndIndex = (currentEndIndex + 1) % endTargets.Count;
+            previousEndIndex = currentEndIndex;
+            currentEndIndex = currentEndIndex + 1;
             UpdateCurrentEnd();
-            isMovingToNextEnd = false;
         }
     }
+    
+   
     public int GetEndPointsCount()
     {
         return endTargets.Count;

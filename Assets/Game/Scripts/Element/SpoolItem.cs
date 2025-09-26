@@ -21,7 +21,9 @@ public class SpoolItem : MonoBehaviour
     [SerializeField] private float conveyorDetectionDistance;
     [SerializeField] private float jumpHeight;
     [SerializeField] private float mainRotationSpeed = 30f; 
-    [SerializeField] private float yarnConnectionHeightOffset = 0.3f; 
+    [SerializeField] private float yarnConnectionHeightOffset = 0.3f;
+    [SerializeField] private float processRope;
+    [SerializeField] private int countKnit;
     private bool isRotating = false;
     private Transform spoolTransform; 
     private float conveyorDistance;
@@ -35,10 +37,12 @@ public class SpoolItem : MonoBehaviour
     private PathFollower pathFollower;
     private Rope attachedRope;
     private bool isWindingYarn = false;
+    private bool isCompletedWindingYarn;
     private int activeRolls = 0;
     private bool isBlocked = false;
     private Vector3 initialPosition;
     public bool IsOnPillar => isOnPillar;
+    public bool IsCompletedWindingYarn => isCompletedWindingYarn;
     #endregion
 
     #region Initialization
@@ -324,8 +328,14 @@ public class SpoolItem : MonoBehaviour
     public void OnYarnCompletedAllKnits()
     {
         // Hiệu ứng hoàn thành
-        Debug.LogError("Done");
+        Debug.Log($"Cuộn len hoàn thành cho spool màu {color}");
         StopSpoolRotation();
+        
+        // Thông báo cho MapController rằng đã hoàn thành cuộn một hàng
+        if (mapController != null)
+        {
+            // Có thể thêm callback hoặc event ở đây nếu cần
+        }
     }
 
     public void StopWindingYarn()
@@ -365,27 +375,31 @@ public class SpoolItem : MonoBehaviour
         }
     }
 
-    public bool IsWindingYarn()
-    {
-        return isWindingYarn;
-    }
-    
     private void StartSpoolRotation()
     {
         if (isRotating) return;
         isRotating = true;
-        
+        isCompletedWindingYarn = false;
         float mainTime = 360f / mainRotationSpeed;
         transform.DORotate(new Vector3(0, 360f, 0), mainTime, RotateMode.LocalAxisAdd)
             .SetLoops(-1, LoopType.Incremental)
             .SetEase(Ease.Linear);
     }
-    
+
     private void StopSpoolRotation()
     {
         isRotating = false;
         if (spoolTransform != null) spoolTransform.DOKill();
         transform.DOKill();
+    }
+    public bool CheckCompletedWindingYarn()
+    {
+        if (countKnit == 100)
+        {
+            isCompletedWindingYarn = true;
+            return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -395,21 +409,21 @@ public class SpoolItem : MonoBehaviour
     {
         float windingDuration = 2f; // Thời gian thu sợi len
         float elapsedTime = 0f;
-        
+
         while (elapsedTime < windingDuration && isWindingYarn)
         {
             elapsedTime += Time.deltaTime;
             float progress = elapsedTime / windingDuration;
-            
-       
-            for (int i = activeRolls;i < rolls.Length; i++)
+
+
+            for (int i = activeRolls; i < rolls.Length; i++)
             {
                 ActivateRoll(i);
             }
-            
+
             yield return null;
         }
-        OnYarnCompletedAllKnits();
+        // OnYarnCompletedAllKnits();
     }
     #endregion
     
