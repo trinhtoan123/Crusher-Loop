@@ -24,7 +24,6 @@ public class PillarItem : MonoBehaviour
             OnSpoolItemPlaced?.Invoke(spoolItem);
         }
     }
-
    
     public bool CanAcceptSpoolItem()
     {

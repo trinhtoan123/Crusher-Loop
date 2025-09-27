@@ -11,6 +11,7 @@ public class SpoolController : MonoBehaviour
     private RoadMeshCreator roadMeshCreator;
     private LevelManager levelManager;
     public LevelManager LevelManager => levelManager;
+    public List<SpoolItem> SpoolItems => spoolItems;
     public void Initialize(LevelManager levelManager)
     {
         this.levelManager = levelManager;
@@ -37,6 +38,14 @@ public class SpoolController : MonoBehaviour
                 spoolItem.Initialize(this, GameManager.Instance.SpoolData);
             }
         }
+    }
+
+    /// <summary>
+    /// Lấy tất cả spool trong game
+    /// </summary>
+    public List<SpoolItem> GetAllSpools()
+    {
+        return spoolItems;
     }
   
 }

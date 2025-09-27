@@ -29,71 +29,58 @@ public class LevelManager : MonoBehaviour
         conveyorController.Initialize(this);
         pillarController.Initialize(this);
         mapController.Initialize(this);
-        SubscribeToConveyorEvents();
         isGameOver = false;
+    }
+    void OnDisable()
+    {
     }
     
     private void Update()
     {
-        HandleDebugInput();
     }
     
-    #region Conveyor Segment Management
-    
-    private void HandleDebugInput()
+  
+
+    #region Meltdown System Methods
+    public void CheckCompleteLevel()
     {
-      
-        if (Input.GetKeyDown(KeyCode.F5))
+        if (GameManager.Instance.CurrentGameState == GameState.GameOver) return;
+        bool isMapClear = mapController.ClearMap();
+        bool canAnySpoolWind = mapController.CanAnySpoolStillWind();
+        bool hasSlotPillar = mapController.HasSlotPillar();
+
+        Debug.Log($"Tất cả spool đã dừng - Kiểm tra: MapClear={isMapClear}, CanSpoolWind={canAnySpoolWind}, HasSlotPillar={hasSlotPillar}");
+
+        if (isMapClear)
         {
-            ManualRestart();
+            WinLevel();
+        }
+        else if (!hasSlotPillar)
+        {
+            if (!canAnySpoolWind)
+            {
+                LoseLevel();
+            }
         }
     }
 
-    
-    #endregion
-    
-    #region Meltdown System Methods
-  
-    private void SubscribeToConveyorEvents()
+    public void LoseLevel()
     {
-        ConveyorController.OnConveyorMeltdown += OnConveyorMeltdown;
-        ConveyorController.OnConveyorJammed += OnConveyorJammed;
-    }
-   
-    private void UnsubscribeFromConveyorEvents()
-    {
-        ConveyorController.OnConveyorMeltdown -= OnConveyorMeltdown;
-        ConveyorController.OnConveyorJammed -= OnConveyorJammed;
-    }
-    private void OnConveyorJammed()
-    {
-        Debug.LogWarning("🚫 BĂNG CHUYỀN BỊ TẮC! Giải quyết nhanh chóng để tránh meltdown!");
+        GameManager.Instance.LoseGame();
+
     }
     
- 
-    public void OnConveyorMeltdown()
+    public void WinLevel()
     {
-        if (isGameOver) return;
-        
-        isGameOver = true;
-        // Auto restart nếu được enable
-        // if (autoRestartOnMeltdown)
-        // {
-        //     restartCoroutine = StartCoroutine(RestartAfterDelay());
-        // }
+        GameManager.Instance.WinGame();
     }
-    
     public void RestartLevel()
     {
-        
-        // Reset conveyor state
         if (conveyorController != null)
         {
             conveyorController.ResetConveyor();
         }
         isGameOver = false;
-        
-        // Reload scene
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
     public void ManualRestart()
@@ -106,9 +93,7 @@ public class LevelManager : MonoBehaviour
         RestartLevel();
     }
     
-    /// <summary>
-    /// Xử lý chuyển level - chuyển sang thùng tiếp theo
-    /// </summary>
+
     public void ProcessLevel()
     {
         currentLevel = nextLevel;
@@ -116,9 +101,7 @@ public class LevelManager : MonoBehaviour
         Debug.Log($"Đã chuyển sang level {currentLevel}, thùng tiếp theo: {nextLevel}");
     }
     
-    /// <summary>
-    /// Lấy chỉ số thùng tiếp theo
-    /// </summary>
+ 
     public int GetNextLevel()
     {
         return nextLevel;
@@ -134,14 +117,6 @@ public class LevelManager : MonoBehaviour
     
     #endregion
     
-    #region Unity Events
-    
-    private void OnDisable()
-    {
-        UnsubscribeFromConveyorEvents();
-    }
-    
-    #endregion
 }
 
 

@@ -278,7 +278,7 @@ MonoBehaviour:
   waveFrequency: 2
   waveAmplitude: 0.1
   smoothness: 0.5
-  moveSpeed: 6
+  moveSpeed: 30
 --- !u!1 &6670623516427272877
 GameObject:
   m_ObjectHideFlags: 0

@@ -9,11 +9,12 @@ public class MapController : MonoBehaviour
     [SerializeField] PillarController pillarController;
     [SerializeField] List<Knit> knitItems = new List<Knit>();
     [SerializeField] private RopeSetting ropeSettingPrefab;
-    private List<SpoolItem> activeSpools = new List<SpoolItem>();
+    private List<SpoolItem> spoolItems = new List<SpoolItem>();
     private RopeSetting currentYarnRope;
     public Action<SpoolItem> OnSpoolWinding;
     private Dictionary<ColorRope, Queue<SpoolItem>> colorQueues = new Dictionary<ColorRope, Queue<SpoolItem>>();
     private Dictionary<ColorRope, bool> isColorProcessing = new Dictionary<ColorRope, bool>();
+    private LevelManager levelManager;
     void OnEnable()
     {
         OnSpoolWinding += IEStartWinding;
@@ -24,20 +25,67 @@ public class MapController : MonoBehaviour
     }
     public void Initialize(LevelManager levelManager)
     {
+        this.levelManager = levelManager;
         pillarController.Initialize(levelManager);
         foreach (var knit in knitItems)
         {
             knit.Initialize(levelManager, this);
         }
     }
+
+ 
+   
+    public bool ClearMap()
+    {
+        foreach (var knit in knitItems)
+        {
+            foreach (var knitChild in knit.KnitItems)
+            {
+                if (!knitChild.IsCompleted)
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public bool HasSlotPillar()
+    {
+       var availablePillar = pillarController.GetAvailablePillar();
+       if( availablePillar != null && availablePillar.IsEmpty)
+       {
+            return true; 
+       }
+        return false; 
+    }
+    
+    public bool CanAnySpoolStillWind()
+    {
+        foreach (var spool in spoolItems)
+        {
+            if (spool.IsWindingYarn)
+            {
+                return true; // Có spool đang cuộn
+            }
+        }
+        
+        foreach (var spool in spoolItems)
+        {
+            if (HasColorInRow(currentRow, spool.color) && CanWindInRow(currentRow, spool.color))
+            {
+                return true;
+            }
+        }
+        return false; 
+    }
+
     public void IEStartWinding(SpoolItem spoolItem)
     {
         if (knitItems == null || knitItems.Count == 0)
         {
             return;
         }
-        
-        // Thêm spool vào hàng đợi theo màu
         AddSpoolToQueue(spoolItem);
     }
 
@@ -45,13 +93,16 @@ public class MapController : MonoBehaviour
     {
         if (itemSpool.IsOnPillar)
         {
-            activeSpools.Add(itemSpool);
+            spoolItems.Add(itemSpool);
+            
+            // Kiểm tra trạng thái game sau khi thêm spool mới
+          
         }
         
         yield return StartCoroutine(ProcessSpoolWinding(itemSpool, sortedKnits));
 
     }
-
+    Knit currentRow;
     private IEnumerator ProcessSpoolWinding(SpoolItem spool, List<Knit> sortedKnits)
     {
         ColorRope spoolColor = spool.color;
@@ -59,8 +110,9 @@ public class MapController : MonoBehaviour
             
         while (currentRowIndex < sortedKnits.Count && !spool.CheckCompletedWindingYarn())
         {
-            Knit currentRow = sortedKnits[currentRowIndex];
-            if (currentRow == null) 
+             Knit currentRow = sortedKnits[currentRowIndex];
+             this.currentRow = currentRow;
+            if (currentRow == null)
             {
                 currentRowIndex++;
                 continue;
@@ -78,6 +130,12 @@ public class MapController : MonoBehaviour
                 else
                 {
                    StopWindingYarn(spool);
+                   
+                   // Kiểm tra trạng thái game khi spool không thể cuộn được nữa
+                   if (levelManager != null)
+                   {
+                       levelManager.CheckCompleteLevel();
+                   }
                 }
                 
                 // Đợi hàng hiện tại hoàn thành trước khi chuyển sang hàng tiếp theo
@@ -87,6 +145,13 @@ public class MapController : MonoBehaviour
             else
             {
                 StopWindingYarn(spool);
+                
+                // Kiểm tra trạng thái game khi spool không có màu phù hợp
+                if (levelManager != null)
+                {
+                    levelManager.CheckCompleteLevel();
+                }
+                
                 yield return new WaitUntil(() => IsRowCompleted(currentRow));
                 currentRowIndex++;
             }
@@ -97,8 +162,8 @@ public class MapController : MonoBehaviour
             yield return StartCoroutine(MakeSpoolDisappear(spool));
         }
     }
-   private void StopWindingYarn(SpoolItem spool)
-   {
+    private void StopWindingYarn(SpoolItem spool)
+    {
         if (currentYarnRope != null)
         {
             Destroy(currentYarnRope.gameObject);
@@ -108,7 +173,8 @@ public class MapController : MonoBehaviour
         {
             spool.StopWindingYarn();
         }
-   }
+      
+    }
 
     private bool HasColorInRow(Knit knit, ColorRope targetColor)
     {
@@ -181,16 +247,12 @@ public class MapController : MonoBehaviour
         List<Transform> sortedTransforms = new List<Transform>(targetChildren.Keys);
         
         bool isLeftToRight = (rowIndex % 2 == 0);
-        Debug.Log($"Hàng {rowIndex}: {(isLeftToRight ? "Trái sang phải" : "Phải sang trái")} - Tạo dây mới");
-        
         if (isLeftToRight)
         {
-            // Hàng lẻ: từ trái sang phải
             sortedTransforms.Sort((a, b) => a.position.x.CompareTo(b.position.x));
         }
         else
         {
-            // Hàng chẵn: từ phải sang trái
             sortedTransforms.Sort((a, b) => b.position.x.CompareTo(a.position.x));
         }
         
@@ -207,11 +269,7 @@ public class MapController : MonoBehaviour
         yield return ProcessEachPoint(sortedTransforms, targetChildren, singleRowRope, spool);
         yield return new WaitUntil(() => singleRowRope.GetCurrentEndIndex() >= singleRowRope.GetEndPointsCount() - 1);
         yield return new WaitForSeconds(0.2f);
-        
-        // Đợi cho đến khi màu này hoàn thành cuộn trong hàng
         yield return new WaitUntil(() => !CanWindInRow(currentRow, spool.color));
-        
-        // Destroy dây sau khi hoàn thành hàng
         if (singleRowRope != null)
         {
             Destroy(singleRowRope.gameObject);
@@ -278,7 +336,19 @@ public class MapController : MonoBehaviour
             currentYarnRope = null;
         }
         spool.CompleteSpool();
-        yield return new WaitForSeconds(0.5f);
+        
+        if (spoolItems.Contains(spool))
+        {
+            spoolItems.Remove(spool);
+        }
+        yield return new WaitForSeconds(0.2f);
+        
+        // Kiểm tra trạng thái game sau khi spool hoàn thành và được loại bỏ
+        if (levelManager != null)
+        {
+            levelManager.CheckCompleteLevel();
+        }
+     
     }
     
     private Material GetYarnMaterial(ColorRope color)
@@ -294,36 +364,28 @@ public class MapController : MonoBehaviour
 
         return null;
     }
-    
+
     #region Queue Management System
-    
-    /// <summary>
-    /// Thêm spool vào hàng đợi theo màu
-    /// </summary>
+
     private void AddSpoolToQueue(SpoolItem spoolItem)
     {
         ColorRope spoolColor = spoolItem.color;
-        
+
         // Khởi tạo queue cho màu này nếu chưa có
         if (!colorQueues.ContainsKey(spoolColor))
         {
             colorQueues[spoolColor] = new Queue<SpoolItem>();
             isColorProcessing[spoolColor] = false;
         }
-        
-        // Thêm spool vào queue
+
         colorQueues[spoolColor].Enqueue(spoolItem);
-        
-        // Bắt đầu xử lý nếu màu này chưa đang được xử lý
         if (!isColorProcessing[spoolColor])
         {
             StartCoroutine(ProcessColorQueue(spoolColor));
         }
+     
     }
     
-    /// <summary>
-    /// Xử lý hàng đợi cho một màu cụ thể
-    /// </summary>
     private IEnumerator ProcessColorQueue(ColorRope color)
     {
         isColorProcessing[color] = true;
@@ -332,10 +394,7 @@ public class MapController : MonoBehaviour
         {
             SpoolItem currentSpool = colorQueues[color].Dequeue();
             
-            // Xử lý cuộn len cho spool hiện tại
             yield return StartCoroutine(ProcessSmartWinding(knitItems, currentSpool));
-            
-            // Đợi một chút trước khi xử lý spool tiếp theo
             yield return new WaitForSeconds(0.1f);
         }
         

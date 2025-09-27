@@ -22,8 +22,10 @@ public class InputManager : MonoBehaviour
 
         if (Input.GetMouseButtonUp(0))
         {
+            spoolItem = null;
         }
     }
+      SpoolItem spoolItem;
     public bool PickSpool()
     {
         bool isHitColumn = false;
@@ -31,7 +33,7 @@ public class InputManager : MonoBehaviour
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         if (Physics.Raycast(ray, out hit, 100.0f, columnMask))
         {
-            SpoolItem spoolItem = hit.transform.GetComponent<SpoolItem>();
+           spoolItem= hit.transform.GetComponent<SpoolItem>();
 
             if (hit.transform.tag == "Spool")
             {

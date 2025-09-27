@@ -29,25 +29,21 @@ MonoBehaviour:
     materialSpool: {fileID: 2100000, guid: b7e9f69f2457cfc4babdc86b1209e304, type: 2}
     materialRoll: {fileID: 2100000, guid: 6e7190b77de3abe4bbec7b69fbb81869, type: 2}
     materialKnit: {fileID: 2100000, guid: d48ee045a8a104b46b0b0dfe2e61d770, type: 2}
-  - color: 8
-    materialSpool: {fileID: 2100000, guid: 1eb94f76a084d28458c756dba1d101a0, type: 2}
-    materialRoll: {fileID: 2100000, guid: 49837d34ec165c44a92d64df0accf8f7, type: 2}
-    materialKnit: {fileID: 2100000, guid: 4316304d331577540bbc78a532b7b8f9, type: 2}
   - color: 4
-    materialSpool: {fileID: 2100000, guid: 9b40c216f58851b4eacef43560ea7d91, type: 2}
+    materialSpool: {fileID: 2100000, guid: 1eb94f76a084d28458c756dba1d101a0, type: 2}
     materialRoll: {fileID: 2100000, guid: 73d7a799d7b076947a1bc41299549c60, type: 2}
-    materialKnit: {fileID: 2100000, guid: c98a29b1dc27c414dad77c3ffe123a81, type: 2}
+    materialKnit: {fileID: 2100000, guid: 4316304d331577540bbc78a532b7b8f9, type: 2}
   - color: 6
     materialSpool: {fileID: 2100000, guid: 90c69f5e690eafe4099e9cb8fc2c7190, type: 2}
-    materialRoll: {fileID: 2100000, guid: 0fb74f4e742dae34f8685b4f45583891, type: 2}
+    materialRoll: {fileID: 2100000, guid: bf9f2234b3d3d284f8f768a6fb423536, type: 2}
     materialKnit: {fileID: 2100000, guid: 459513028157bd74593cf34914ccb11b, type: 2}
   - color: 7
     materialSpool: {fileID: 2100000, guid: 7578b78efdbc23043a3f5f7ccbffaa69, type: 2}
-    materialRoll: {fileID: 2100000, guid: bf9f2234b3d3d284f8f768a6fb423536, type: 2}
+    materialRoll: {fileID: 2100000, guid: 6dc6b7962deb13a41bf34f3f5926102e, type: 2}
     materialKnit: {fileID: 2100000, guid: 7a295a73118adfc4bbb69fdeae607171, type: 2}
   - color: 8
     materialSpool: {fileID: 2100000, guid: 1444eacad0c194147b199e647f769ce4, type: 2}
-    materialRoll: {fileID: 2100000, guid: 6dc6b7962deb13a41bf34f3f5926102e, type: 2}
+    materialRoll: {fileID: 2100000, guid: 365a618857419e0458bef5e10cb26afb, type: 2}
     materialKnit: {fileID: 2100000, guid: 970e602f6e09a2e4d80e8e2b4b641805, type: 2}
   - color: 5
     materialSpool: {fileID: 2100000, guid: 9b40c216f58851b4eacef43560ea7d91, type: 2}

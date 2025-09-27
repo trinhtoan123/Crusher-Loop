@@ -174,16 +174,16 @@ Material:
     - __dummy__: 0
     - __outline_gui_dummy__: 0
     m_Colors:
-    - _BaseColor: {r: 0.480909, g: 0.13843894, b: 0.5754717, a: 1}
+    - _BaseColor: {r: 0.8941177, g: 0.16862746, b: 0.86666673, a: 1}
     - _Color: {r: 0.12636073, g: 0.004983983, b: 0.1509434, a: 1}
-    - _EmissionColor: {r: 0.3274346, g: 0.16580635, b: 0.4339623, a: 1}
+    - _EmissionColor: {r: 0.63075733, g: 0.02121901, b: 0.590619, a: 1}
     - _HColor: {r: 1, g: 1, b: 1, a: 1}
     - _MatCapColor: {r: 1, g: 1, b: 1, a: 1}
     - _OutlineColor: {r: 0.42126864, g: 0.1792453, b: 0.7169812, a: 1}
     - _ReflectionColor: {r: 1, g: 1, b: 1, a: 1}
-    - _RimColor: {r: 0.80205166, g: 0.44028127, b: 0.9622642, a: 0.5}
+    - _RimColor: {r: 0.57758063, g: 0.020288562, b: 0.5457247, a: 1}
     - _SColor: {r: 0.24528301, g: 0.24528301, b: 0.24528301, a: 1}
     - _SketchColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.06808472, g: 0.08208732, b: 0.09433961, a: 1}
-    - _SpecularColor: {r: 0.11035954, g: 0.029191881, b: 0.1509434, a: 1}
+    - _SpecularColor: {r: 0.5647117, g: 0.020288562, b: 0.5332766, a: 1}
   m_BuildTextureStacks: []

@@ -16,7 +16,7 @@ public class RopeSetting : MonoBehaviour
     private List<Transform> endTargets = new List<Transform>();
     private int currentEndIndex = 0;
     private int previousEndIndex = -1; // Track điểm trước đó
-    public float moveSpeed = 6f;
+    public float moveSpeed;
     private LineRenderer lr;
     private Vector3 currentEnd;
     private Transform _startDummy;
